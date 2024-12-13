@@ -1,0 +1,41 @@
+#ifndef BPLUS_NODE_TEST_INTERFACE_DEFINED
+#define BPLUS_NODE_TEST_INTERFACE_DEFINED
+
+#include "../src/BPlusNode.hpp"
+
+template<std::size_t N, OrderedKey Key, Storable Mapped>
+class BPlusLeafTestInterface : public BPlusLeafNode<N, Key, Mapped> {
+public:
+    BPlusLeafTestInterface() : BPlusLeafNode<N, Key, Mapped>(){}
+    const BidirectionalNode* get_next() const {return this->next;}
+    const BidirectionalNode* get_prev() const {return this->prev;}
+    const Key& get_key(std::size_t index) const {return this->m_keys[index];}
+    std::size_t get_key_num() const {return this->m_key_counter;}
+    const Mapped* get_data(std::size_t index) const {return this->m_data[index];}
+};
+
+template<std::size_t N, OrderedKey Key, Storable Mapped>
+class BPlusInternalNodeTestInterface : public BPlusInternalNode<N, Key, Mapped> {
+public:
+    BPlusInternalNodeTestInterface() : BPlusInternalNode<N, Key, Mapped>(){}
+    const BidirectionalNode* get_next() const {return this->next;}
+    const BidirectionalNode* get_prev() const {return this->prev;}
+    const Key& get_key(std::size_t index) const {return this->m_keys[index];}
+    std::size_t get_key_num() const {return this->m_key_counter;}
+    const BPlusNode<N, Key, Mapped>* get_child(std::size_t index) const {return this->m_children[index];}
+    bool push_child(BPlusNode<N, Key, Mapped>* child) {
+        if (this->m_key_counter == N + 1) return false;
+        this->m_children[this->m_key_counter] = child;
+        if (this->m_key_counter > 0){
+            this->m_keys[this->m_key_counter - 1] = child->min_key();
+        }
+        else{
+            this->min_key = this->m_children[0]->min_key();
+        }
+        ++this->m_key_counter;
+        this->max_key = child->max_key();
+        return true;
+    }
+};
+
+#endif
