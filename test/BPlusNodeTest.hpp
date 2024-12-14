@@ -9,6 +9,7 @@ public:
     BPlusLeafTestInterface() : BPlusLeafNode<N, Key, Mapped>(){}
     const BidirectionalNode* get_next() const {return this->next;}
     const BidirectionalNode* get_prev() const {return this->prev;}
+    bool is_split_from_me (const BPlusNode<N, Key, Mapped>* const other) const {return this->is_node_after_me(other);}
     const Key& get_key(std::size_t index) const {return this->m_keys[index];}
     std::size_t get_key_num() const {return this->m_key_counter;}
     const Mapped* get_data(std::size_t index) const {return this->m_data[index];}
@@ -20,6 +21,8 @@ public:
     BPlusInternalNodeTestInterface() : BPlusInternalNode<N, Key, Mapped>(){}
     const BidirectionalNode* get_next() const {return this->next;}
     const BidirectionalNode* get_prev() const {return this->prev;}
+    bool is_split_from_me (const BPlusNode<N, Key, Mapped>* const other) const {return (other!=nullptr)&&(other->prev = this)&&(this->next = other);}
+    std::size_t get_sum_sizes (const BPlusNode<N, Key, Mapped>* const other) const {return this->m_key_counter + other->m_key_counter ;}
     const Key& get_key(std::size_t index) const {return this->m_keys[index];}
     std::size_t get_key_num() const {return this->m_key_counter;}
     const BPlusNode<N, Key, Mapped>* get_child(std::size_t index) const {return this->m_children[index];}
