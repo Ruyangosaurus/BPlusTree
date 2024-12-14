@@ -16,6 +16,9 @@ protected:
             new_node->next = this->next;
         }
     }
+    bool is_node_after_me (const BidirectionalNode* const other) const {return (other!=nullptr)&&
+                                                                                (other->prev == this)&&
+                                                                                (this->next == other);}
 public:
     /// @brief Constructor that initializes the `next` and `prev` pointers to `nullptr`.
     BidirectionalNode() : next(nullptr), prev(nullptr){}
