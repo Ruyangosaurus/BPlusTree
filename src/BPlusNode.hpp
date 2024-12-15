@@ -171,20 +171,20 @@ public:
     ///        This method delegates the search to the appropriate child node.
     /// @param key The key to search for.
     /// @return A pointer to the mapped data associated with the key or nullptr if there isn't one.
-    Mapped* search(Key key) override;
+    Mapped* search(const Key& key) override;
 
     /// @brief Inserts the given key and associated data into the internal node's subtree. If the node becomes full, 
     ///        it splits into a new node and returns a pointer to the newly created node.
     /// @param key The key to insert.
     /// @param value The data to associate with the key.
     /// @return A pointer to the newly created node if the current node is full; otherwise, a null pointer.
-    BPlusNode<N, Key, Mapped>* insert(Key key, Mapped value) override;
+    BPlusNode<N, Key, Mapped>* insert(const Key& key, const Mapped& value) override;
 
     /// @brief Deletes the data associated with the given key from the internal node's subtree.
     ///        If any child node is underflowed, it is its responsibility for handling underflow.
     /// @param key The key to delete.
     /// @return `true` if the deletion was successful, `false` if the key was not found.
-    bool erase(Key key) override;
+    bool erase(const Key& key) override;
 
     /// @brief Removes all data and children in subtree if present.
     void erase_all() override;
@@ -311,13 +311,13 @@ void BPlusLeafNode<N, Key, Mapped>::erase_all()
 //////////////////////////////////////////////////////////////////////////////////
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-Mapped* BPlusInternalNode<N, Key, Mapped>::search(Key key)
+Mapped* BPlusInternalNode<N, Key, Mapped>::search(const Key& key)
 {
     return this->m_children[this->find_smallest_bigger_key_index(key)]->search(key);
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusNode<N, Key, Mapped> *BPlusInternalNode<N, Key, Mapped>::insert(Key key, Mapped value)
+BPlusNode<N, Key, Mapped> *BPlusInternalNode<N, Key, Mapped>::insert(const Key& key, const Mapped& value)
 {
     std::size_t working_index = this->find_smallest_bigger_key_index(key);
     auto new_ptr = this->m_children[working_index]->insert(key, value);
@@ -329,18 +329,18 @@ BPlusNode<N, Key, Mapped> *BPlusInternalNode<N, Key, Mapped>::insert(Key key, Ma
         this->m_keys[i] = this->m_keys[i-1];
     }
     this->m_children[i+1] = new_ptr;
-    this->m_keys[i] = new_ptr.min_key();
+    this->m_keys[i] = new_ptr->min_key();
     ++this->m_key_counter;
     
-    BPlusLeafNode<N, Key, Mapped>* out_ptr = nullptr;
+    BPlusInternalNode<N, Key, Mapped>* out_ptr = nullptr;
     // case 2: this too must split if it violates the definition of N
     if (this->m_key_counter == N+1){ 
-        auto new_node = new BPlusLeafNode<N, Key, Mapped>();
+        auto new_node = new BPlusInternalNode<N, Key, Mapped>();
         std::size_t mid = N/2; // stabilizing the sizes
         out_ptr = new_node;
 
         for (std::size_t i = mid; i < N; ++i) {
-            new_node->m_data[i - mid] = this->m_data[i];
+            new_node->m_children[i - mid] = this->m_children[i];
             new_node->m_keys[i - mid] = this->m_keys[i];
         }
         this->m_key_counter = mid;
@@ -351,7 +351,7 @@ BPlusNode<N, Key, Mapped> *BPlusInternalNode<N, Key, Mapped>::insert(Key key, Ma
         new_node->prev = this;
     }
     // stabilize keys for parent handling
-    this->max_key = this->m_children[this->m_key_counter]->max_key();
+    this->m_max_key = this->m_children[this->m_key_counter]->max_key();
     if (out_ptr){
         out_ptr->m_min_key = out_ptr->m_children[0]->min_key();
         out_ptr->m_max_key = out_ptr->m_children[out_ptr->m_key_counter]->max_key();
@@ -360,7 +360,7 @@ BPlusNode<N, Key, Mapped> *BPlusInternalNode<N, Key, Mapped>::insert(Key key, Ma
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-bool BPlusInternalNode<N, Key, Mapped>::erase(Key key)
+bool BPlusInternalNode<N, Key, Mapped>::erase(const Key& key)
 {
     std::size_t working_index = this->find_smallest_bigger_key_index(key);
     auto res = this->m_children[working_index]->erase(key);
