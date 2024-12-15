@@ -313,5 +313,39 @@ int main(){
 
     std::cout << "BPlusInternalNode TESTS:\n";
     
+    tester("8. search pt. 1", []{
+        BPlusLeafTestInterface<4,int,int> even_leaf_1;
+        even_leaf_1.insert(0,0);
+        even_leaf_1.insert(10,10);
+        even_leaf_1.insert(30,30);
+        even_leaf_1.insert(20,20);
+        BPlusLeafTestInterface<4,int,int> even_leaf_2;
+        even_leaf_2.insert(40,40);
+        even_leaf_2.insert(50,50);
+        even_leaf_2.insert(60,60);
+        even_leaf_2.insert(70,70);
+        BPlusInternalNodeTestInterface<4,int,int> even_node (&even_leaf_1);
+        even_node.push_child(&even_leaf_2);
+
+        _ASSERT(even_node.get_key_num() == 1);
+        _ASSERT(even_node.get_key(0) == 40);
+        _ASSERT(even_node.min_key() == 0);
+        _ASSERT(even_node.max_key() == 70);
+        _ASSERT(even_node.max_key() == 70);
+        _ASSERT(even_node.get_child(0) == &even_leaf_1);
+        _ASSERT(even_node.get_child(1) == &even_leaf_2);
+        _ASSERT(*(even_leaf.search(0)) == 0);
+        _ASSERT(*(even_leaf.search(10)) == 10);
+        _ASSERT(*(even_leaf.search(20)) == 20);
+        _ASSERT(*(even_leaf.search(30)) == 30);
+        _ASSERT(*(even_leaf.search(40)) == 40);
+        _ASSERT(*(even_leaf.search(50)) == 50);
+        _ASSERT(*(even_leaf.search(60)) == 60);
+        _ASSERT(*(even_leaf.search(70)) == 70);
+        even_leaf_1.erase_all();
+        even_leaf_2.erase_all();
+        _CONCLUDE;
+    });
+
     return 0;
 }
