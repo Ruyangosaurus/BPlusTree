@@ -18,7 +18,7 @@ public:
 template<std::size_t N, OrderedKey Key, Storable Mapped>
 class BPlusInternalNodeTestInterface : public BPlusInternalNode<N, Key, Mapped> {
 public:
-    BPlusInternalNodeTestInterface() : BPlusInternalNode<N, Key, Mapped>(){}
+    BPlusInternalNodeTestInterface(BPlusNode<N, Key, Mapped>* init) : BPlusInternalNode<N, Key, Mapped>(){this->m_children[0] = init; this->m_min_key = this->m_children[0]->min_key();}
     const BidirectionalNode* get_next() const {return this->next;}
     const BidirectionalNode* get_prev() const {return this->prev;}
     bool is_split_from_me (const BPlusNode<N, Key, Mapped>* const other) const {return (other!=nullptr)&&(other->prev = this)&&(this->next = other);}
@@ -28,15 +28,10 @@ public:
     const BPlusNode<N, Key, Mapped>* get_child(std::size_t index) const {return this->m_children[index];}
     bool push_child(BPlusNode<N, Key, Mapped>* child) {
         if (this->m_key_counter == N + 1) return false;
-        this->m_children[this->m_key_counter] = child;
-        if (this->m_key_counter > 0){
-            this->m_keys[this->m_key_counter - 1] = child->min_key();
-        }
-        else{
-            this->min_key = this->m_children[0]->min_key();
-        }
+        this->m_children[this->m_key_counter + 1] = child;
+        this->m_keys[this->m_key_counter] = child->min_key();
         ++this->m_key_counter;
-        this->max_key = child->max_key();
+        this->m_max_key = child->max_key();
         return true;
     }
 };
