@@ -4,6 +4,72 @@
 #include "Constraints.hpp"
 #include <stdexcept>
 #include <array>
+#include <variant>
+
+template<std::size_t N, OrderedKey Key, Storable Mapped>
+class BPlusNode{
+public:
+    bool is_leaf;
+    std::size_t m_key_counter;
+    std::array<Key, N> m_keys;
+    std::array<void*, N> m_data; // either Mapped* in leafs or BPlusNode* in internal nodes
+public:
+    /// @brief Searches for the data associated with a given key in the node's subtree.
+    /// @param key The key to search for.
+    /// @return A pointer to the mapped data associated with the key or nullptr if there isn't one.
+    Mapped* search (const Key&) const;
+
+    /// @brief Inserts a new key and its associated data into the node's subtree.
+    /// @param key The key to insert.
+    /// @param data The data associated with the key.
+    /// @return A pointer to the newly created node if the node was full and split. Otherwise, returns `nullptr` if the insertion is successful and the node is not full.
+    BPlusNode* insert (const Key&, const Mapped&);
+
+    /// @brief Finds the index of the smallest key in the node that is strictly greater than the given key.
+    /// @param key The key to find the smallest bigger key for.
+    /// @return The index of the smallest key larger than the given `key` in the `m_keys` array.
+    /// @note Time Complexity: O(log x), where x is the number of keys currently stored in the node.
+    /// @note Space Complexity: O(1).
+    std::size_t find_smallest_bigger_key_index(const Key& key);
+};
+
+//////////////////////////////////////////////////////////////////////////////////
+//                        BPlusNode Implementation Block                        //
+//////////////////////////////////////////////////////////////////////////////////
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+Mapped *BPlusNode<N, Key, Mapped>::search(const Key &) const
+{
+    auto index = this->find_smallest_bigger_key_index(key);
+    if (index == 0) return nullptr;
+    if (is_leaf){
+        // in leafs, d[i] corresponds to k[i]; in internal nodes, d[i] contains search keys which are all less than k[i]
+        if (this->m_keys[index - 1] != key) return nullptr; 
+        return (Mapped*)m_data[index-1];
+    }
+    return ((BPlusNode*)this->m_data[index - 1])->search(key);
+}
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key &key)
+{
+    std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
+    // binary search, T(n) = O(log n) & S(n) = O(1)
+    while (left <= right){
+        auto mid = (left + right) / 2;
+        if (key < m_keys[mid]){ // comparison is permitted because Key must support 'operator<(Key, Key)'
+            result = mid;
+            if (mid == 0) break; // prevents out-of-range indexing
+            right = mid - 1;
+        }
+        else{
+            left = mid + 1; 
+        }
+    }
+    return result;
+}
+
+//////////////////////////////////// redesign above this line ///////////////////////////////////////
 
 /// @brief A base class that serves as the foundation for the tree's nodes and for the tree's dummy node.
 /// The class defines pointers for the bidirectional linking of nodes, where each node has a `next` and `prev` pointer.
@@ -84,7 +150,7 @@ public:
     /// @return The index of the smallest key larger than the given `key` in the `m_keys` array.
     /// @note Time Complexity: O(log x), where x is the number of keys currently stored in the node.
     /// @note Space Complexity: O(1).
-    std::size_t find_smallest_bigger_key_index(const Key& key);
+    /// std::size_t find_smallest_bigger_key_index(const Key& key);
 };
 
 /// @brief A class representing a leaf node in a B+ tree. 
@@ -210,28 +276,7 @@ public:
     void handle_underflow(std::size_t underflow_index);
 };
 
-//////////////////////////////////////////////////////////////////////////////////
-//                        BPlusNode Implementation Block                        //
-//////////////////////////////////////////////////////////////////////////////////
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key& key)
-{
-    std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
-    // binary search, T(n) = O(log n) & S(n) = O(1)
-    while (left <= right){
-        auto mid = (left + right) / 2;
-        if (key < m_keys[mid]){ // comparison is permitted because Key must support 'operator<(Key, Key)'
-            result = mid;
-            if (mid == 0) break; // prevents out-of-range indexing
-            right = mid - 1;
-        }
-        else{
-            left = mid + 1; 
-        }
-    }
-    return result;
-}
 
 //////////////////////////////////////////////////////////////////////////////////
 //                      BPlusLeafNode Implementation Block                      //
@@ -240,10 +285,7 @@ std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key&
 template <std::size_t N, OrderedKey Key, Storable Mapped>
 Mapped *BPlusLeafNode<N, Key, Mapped>::search(const Key& key)
 {
-    auto index = this->find_smallest_bigger_key_index(key);
-    // in leafs, d[i] corresponds to k[i]; in internal nodes, d[i] contains search keys which are all less than k[i]
-    if (index == 0 || this->m_keys[index - 1] != key) return nullptr; 
-    return m_data[index-1];
+    
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
@@ -313,7 +355,7 @@ void BPlusLeafNode<N, Key, Mapped>::erase_all()
 template <std::size_t N, OrderedKey Key, Storable Mapped>
 Mapped* BPlusInternalNode<N, Key, Mapped>::search(const Key& key)
 {
-    return this->m_children[this->find_smallest_bigger_key_index(key)]->search(key);
+    
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
