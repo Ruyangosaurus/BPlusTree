@@ -12,8 +12,13 @@ public:
     std::size_t m_key_counter;
     std::array<Key, N> m_keys;
     std::variant<std::array<Mapped*, N>, std::array<BPlusNode*, N>> m_data; // either Mapped* in leafs or BPlusNode* in internal nodes
-    BPlusNode* m_next, m_prev;
+    BPlusNode* m_next, * m_prev;
 public:
+
+    /// @brief Creates an empty node
+    /// @param is_leaf A flag for creating either a leaf (if true) or an internal node (if false)
+    BPlusNode(bool);
+
     /// @brief Searches for the data associated with a given key in the node's subtree.
     /// @param key The key to search for.
     /// @return A pointer to the mapped data associated with the key or nullptr if there isn't one.
@@ -38,7 +43,7 @@ public:
     /// @return The index of the smallest key larger than the given `key` in the `m_keys` array.
     /// @note Time Complexity: O(log x), where x is the number of keys currently stored in the node.
     /// @note Space Complexity: O(1).
-    std::size_t find_smallest_bigger_key_index(const Key& key);
+    std::size_t find_smallest_bigger_key_index(const Key& key) const;
 
     /// @brief Handles underflows that occur after deletion in an internal node. This method is responsible for
     ///        deciding whether to merge nodes or redistribute keys between siblings, and it propagates the underflow
@@ -63,10 +68,10 @@ void merge(BPlusNode<N, Key, Mapped>* lower_node, BPlusNode<N, Key, Mapped>* hig
 
     lower_node->m_key_counter += higher_node->m_key_counter + 1;
 
-    if (higher_node->next){
-        higher_node->next->prev = lower_node;
+    if (higher_node->m_next){
+        higher_node->m_next->m_prev = lower_node;
     }
-    lower_node->next = higher_node->next;
+    lower_node->m_next = higher_node->m_next;
 
     delete higher_node;
 }
@@ -76,9 +81,23 @@ void merge(BPlusNode<N, Key, Mapped>* lower_node, BPlusNode<N, Key, Mapped>* hig
 //////////////////////////////////////////////////////////////////////////////////
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-Mapped *BPlusNode<N, Key, Mapped>::search(const Key& key) const
+BPlusNode<N, Key, Mapped>::BPlusNode(bool is_leaf)
 {
-    auto index = this->find_smallest_bigger_key_index(key);
+    m_key_counter = 0;
+    m_next = nullptr;
+    m_prev = nullptr;
+    if (is_leaf){
+        m_data = std::array<Mapped*, N> ();
+    }
+    else{
+        m_data = std::array<BPlusNode*, N> ();
+    }
+}
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+Mapped *BPlusNode<N, Key, Mapped>::search(const Key &key) const
+{
+    auto index = find_smallest_bigger_key_index(key);
     if (index == 0) return nullptr;
     if (m_data.index() == 0){
         // in leafs, d[i] corresponds to k[i]; in internal nodes, d[i] contains search keys which are all less than k[i]
@@ -100,16 +119,15 @@ BPlusNode<N, Key, Mapped> *BPlusNode<N, Key, Mapped>::insert(const Key& key, con
     }
     else{                                               // if internal
         std::size_t working_index = this->find_smallest_bigger_key_index(key);
-        inserted_ptr = this->m_children[working_index]->insert(key, value);
+        inserted_ptr = std::get<1>(this->m_data)[working_index]->insert(key, mapped);
         if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
         inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
     }
 
     BPlusNode* inserting_node = this, * out_ptr = nullptr;
     if (this->m_key_counter == N){ // split
-        auto new_node = new BPlusNode();
-        new_node->m_data = (this->m_data.index() == 0) ? std::array<Mapped*, N> () : std::array<BPlusNode*, N> ();
-        std::size_t mid = (inserted_key < this->m_keys[N/2]) ? N/2 : N - N/2; // stabilizing the sizes
+        auto new_node = new BPlusNode(this->m_data.index() == 0);              // index == 0 <-> this is a leaf
+        std::size_t mid = (inserted_key < this->m_keys[N/2]) ? N/2 : N - N/2;  // stabilizing the sizes
         inserting_node = (inserted_key < this->m_keys[N/2]) ? this : new_node; // choose the smaller node
         out_ptr = new_node;
 
@@ -128,12 +146,12 @@ BPlusNode<N, Key, Mapped> *BPlusNode<N, Key, Mapped>::insert(const Key& key, con
         this->m_key_counter = mid;
         new_node->m_key_counter = N - mid;
 
-        if (this->next){
-           this->next->prev = new_node;
+        if (this->m_next){
+           this->m_next->m_prev = new_node;
         }
-        new_node->next = this->next;
-        this->next = new_node;
-        new_node->prev = this;
+        new_node->m_next = this->m_next;
+        this->m_next = new_node;
+        new_node->m_prev = this;
     }
     std::size_t i = inserting_node->m_key_counter;
     if (this->m_data.index() == 0){
@@ -160,12 +178,12 @@ template <std::size_t N, OrderedKey Key, Storable Mapped>
 void BPlusNode<N, Key, Mapped>::erase_all()
 {
     if (this->m_data.index() == 0){
-        for (std::size_t i = 0; i <= this->m_key_counter; ++i){
+        for (std::size_t i = 0; i < this->m_key_counter; ++i){
             delete std::get<0>(this->m_data)[i];
         }
     }
     else{
-        for (std::size_t i = 0; i <= this->m_key_counter; ++i){
+        for (std::size_t i = 0; i < this->m_key_counter; ++i){
             std::get<1>(this->m_data)[i]->erase_all();
             delete std::get<1>(this->m_data)[i];
         }
@@ -197,7 +215,7 @@ bool BPlusNode<N, Key, Mapped>::erase(const Key& key)
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key &key)
+std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key &key) const
 {
     std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
     // binary search, T(n) = O(log n) & S(n) = O(1)
@@ -220,7 +238,7 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
     std::size_t neighbour_index = (underflow_index > 0) ? underflow_index - 1 : underflow_index + 1;
-    BPlusNode<N, Key, Mapped>* underflow_subnode = this->m_children[underflow_index], * neighbour_subnode = this->m_children[neighbour_index];
+    BPlusNode<N, Key, Mapped>* underflow_subnode = std::get<1>(this->m_data)[underflow_index], * neighbour_subnode = std::get<1>(this->m_data)[neighbour_index];
     if (underflow_subnode->m_key_counter + neighbour_subnode->m_key_counter > N){
         // Case 1: borrow
         if (underflow_index > neighbour_index){
