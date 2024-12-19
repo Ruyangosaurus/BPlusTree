@@ -1131,5 +1131,152 @@ int main(){
         _CONCLUDE;
     });
 
+    tester("15. merging with the right", []{
+        BPlusNode<4,int,int>* even_leaf_1 = new BPlusNode<4,int,int>(true);
+        even_leaf_1->insert(0,0);
+        even_leaf_1->insert(10,10);
+        BPlusNode<4,int,int>* even_leaf_2 = new BPlusNode<4,int,int>(true);
+        even_leaf_2->insert(30,30);
+        even_leaf_2->insert(20,20);
+        BPlusNode<4,int,int> even_node (false);
+        even_node.m_key_counter = 2;
+        std::get<1>(even_node.m_data)[0] = even_leaf_1;
+        std::get<1>(even_node.m_data)[1] = even_leaf_2;
+        even_node.m_keys[0] = even_leaf_1->m_keys[0];
+        even_node.m_keys[1] = even_leaf_2->m_keys[0];
+
+        _ASSERT(even_node.erase(10) == true);
+        _ASSERT(even_node.m_key_counter == 1);
+        _ASSERT(even_leaf_1->m_key_counter == 3);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[0]) == 0);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[1]) == 20);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[2]) == 30);
+        _ASSERT(*(even_node.search(0)) == 0);
+        _ASSERT(even_node.search(10) == nullptr);
+        _ASSERT(*(even_node.search(20)) == 20);
+        _ASSERT(*(even_node.search(30)) == 30);
+        even_node.erase_all();
+
+        BPlusNode<5,int,int>* odd_leaf_1 = new BPlusNode<5,int,int>(true);
+        odd_leaf_1->insert(0,0);
+        odd_leaf_1->insert(10,10);
+        odd_leaf_1->insert(-10,-10);
+        BPlusNode<5,int,int>* odd_leaf_2 = new BPlusNode<5,int,int>(true);
+        odd_leaf_2->insert(30,30);
+        odd_leaf_2->insert(20,20);
+        odd_leaf_2->insert(40,40);
+        BPlusNode<5,int,int> odd_node (false);
+        odd_node.m_key_counter = 2;
+        std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
+        std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
+        odd_node.m_keys[0] = odd_leaf_1->m_keys[0];
+        odd_node.m_keys[1] = odd_leaf_2->m_keys[0];
+
+        _ASSERT(odd_node.erase(10) == true);
+        _ASSERT(odd_node.m_key_counter == 1);
+        _ASSERT(odd_leaf_1->m_key_counter == 5);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[0]) == -10);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[1]) == 0);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[2]) == 20);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[3]) == 30);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[4]) == 40);
+        _ASSERT(*(odd_node.search(-10)) == -10);
+        _ASSERT(*(odd_node.search(0)) == 0);
+        _ASSERT(odd_node.search(10) == nullptr);
+        _ASSERT(*(odd_node.search(20)) == 20);
+        _ASSERT(*(odd_node.search(30)) == 30);
+        _ASSERT(*(odd_node.search(40)) == 40);
+        odd_node.erase_all();
+
+        _CONCLUDE;
+    });
+
+    tester("16. merging with the left", []{
+        BPlusNode<4,int,int>* even_leaf_1 = new BPlusNode<4,int,int>(true);
+        even_leaf_1->insert(0,0);
+        even_leaf_1->insert(10,10);
+        even_leaf_1->insert(30,30);
+        BPlusNode<4,int,int>* even_leaf_2 = new BPlusNode<4,int,int>(true);
+        even_leaf_2->insert(40,40);
+        even_leaf_2->insert(50,50);
+        BPlusNode<4,int,int>* even_leaf_3 = new BPlusNode<4,int,int>(true);
+        even_leaf_3->insert(60,60);
+        even_leaf_3->insert(70,70);
+        even_leaf_3->insert(80,80);
+        BPlusNode<4,int,int> even_node (false);
+        even_node.m_key_counter = 3;
+        std::get<1>(even_node.m_data)[0] = even_leaf_1;
+        std::get<1>(even_node.m_data)[1] = even_leaf_2;
+        std::get<1>(even_node.m_data)[2] = even_leaf_3;
+        even_node.m_keys[2] = even_leaf_3->m_keys[0];
+        even_node.m_keys[0] = even_leaf_1->m_keys[0];
+        even_node.m_keys[1] = even_leaf_2->m_keys[0];
+
+        _ASSERT(even_node.erase(40) == true);
+        _ASSERT(even_node.m_key_counter == 2);
+        _ASSERT(std::get<1>(even_node.m_data)[0] == even_leaf_1);
+        _ASSERT(std::get<1>(even_node.m_data)[1] == even_leaf_3);
+        _ASSERT(even_leaf_1->m_key_counter == 4);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[0]) == 0);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[1]) == 10);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[2]) == 30);
+        _ASSERT(*(std::get<0>(even_leaf_1->m_data)[3]) == 50);
+        _ASSERT(even_leaf_3->m_key_counter == 3);
+        _ASSERT(*(std::get<0>(even_leaf_3->m_data)[0]) == 60);
+        _ASSERT(*(std::get<0>(even_leaf_3->m_data)[1]) == 70);
+        _ASSERT(*(std::get<0>(even_leaf_3->m_data)[2]) == 80);
+        _ASSERT(*(even_node.search(0)) == 0);
+        _ASSERT(*(even_node.search(10)) == 10);
+        _ASSERT(*(even_node.search(30)) == 30);
+        _ASSERT(even_node.search(40) == nullptr);
+        _ASSERT(*(even_node.search(50)) == 50);
+        even_node.erase_all();
+
+        BPlusNode<5,int,int>* odd_leaf_1 = new BPlusNode<5,int,int>(true);
+        odd_leaf_1->insert(0,0);
+        odd_leaf_1->insert(10,10);
+        odd_leaf_1->insert(20,20);
+        BPlusNode<5,int,int>* odd_leaf_2 = new BPlusNode<5,int,int>(true);
+        odd_leaf_2->insert(30,30);
+        odd_leaf_2->insert(40,40);
+        odd_leaf_2->insert(50,50);
+        BPlusNode<5,int,int>* odd_leaf_3 = new BPlusNode<5,int,int>(true);
+        odd_leaf_3->insert(60,60);
+        odd_leaf_3->insert(70,70);
+        odd_leaf_3->insert(80,80);
+        BPlusNode<5,int,int> odd_node (false);
+        odd_node.m_key_counter = 3;
+        std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
+        std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
+        std::get<1>(odd_node.m_data)[2] = odd_leaf_3;
+        odd_node.m_keys[2] = odd_leaf_3->m_keys[0];
+        odd_node.m_keys[0] = odd_leaf_1->m_keys[0];
+        odd_node.m_keys[1] = odd_leaf_2->m_keys[0];
+
+        _ASSERT(odd_node.erase(50) == true);
+        _ASSERT(odd_node.m_key_counter == 2);
+        _ASSERT(std::get<1>(odd_node.m_data)[0] == odd_leaf_1);
+        _ASSERT(std::get<1>(odd_node.m_data)[1] == odd_leaf_3);
+        _ASSERT(odd_leaf_1->m_key_counter == 5);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[0]) == 0);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[1]) == 10);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[2]) == 20);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[3]) == 30);
+        _ASSERT(*(std::get<0>(odd_leaf_1->m_data)[4]) == 40);
+        _ASSERT(odd_leaf_3->m_key_counter == 3);
+        _ASSERT(*(std::get<0>(odd_leaf_3->m_data)[0]) == 60);
+        _ASSERT(*(std::get<0>(odd_leaf_3->m_data)[1]) == 70);
+        _ASSERT(*(std::get<0>(odd_leaf_3->m_data)[2]) == 80);
+        _ASSERT(*(odd_node.search(0)) == 0);
+        _ASSERT(*(odd_node.search(10)) == 10);
+        _ASSERT(*(odd_node.search(20)) == 20);
+        _ASSERT(*(odd_node.search(30)) == 30);
+        _ASSERT(*(odd_node.search(40)) == 40);
+        _ASSERT(odd_node.search(50) == nullptr);
+        odd_node.erase_all();
+
+        _CONCLUDE;
+    });
+
     return 0;
 }
