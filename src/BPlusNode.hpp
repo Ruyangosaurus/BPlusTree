@@ -67,7 +67,7 @@ void merge(BPlusNode<N, Key, Mapped>* lower_node, BPlusNode<N, Key, Mapped>* hig
         std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
     }
 
-    lower_node->m_key_counter += higher_node->m_key_counter + 1;
+    lower_node->m_key_counter += higher_node->m_key_counter;
 
     if (higher_node->m_next){
         higher_node->m_next->m_prev = lower_node;
@@ -288,15 +288,19 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
         // Case 2: merge
         if (underflow_index > neighbour_index) { 
             merge<N, Key, Mapped, is_internal>(neighbour_subnode, underflow_subnode);
+            for (std::size_t i = underflow_index; i < this->m_key_counter; ++i) {
+                this->m_keys[i] = this->m_keys[i + 1];
+                std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
+            }
+            this->m_key_counter--;
         }
         else { 
             merge<N, Key, Mapped, is_internal>(underflow_subnode, neighbour_subnode);
-        }
-
-        this->m_key_counter--;
-        for (std::size_t i = underflow_index + 1; i < this->m_key_counter; ++i) {
-            this->m_keys[i] = this->m_keys[i + 1];
-            std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 12];
+            for (std::size_t i = neighbour_index; i < this->m_key_counter; ++i) {
+                this->m_keys[i] = this->m_keys[i + 1];
+                std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
+            }
+            this->m_key_counter--;
         }
     }
 }
