@@ -49,6 +49,7 @@ public:
     ///        deciding whether to merge nodes or redistribute keys between siblings, and it propagates the underflow
     ///        signal to the parent if necessary.
     /// @param underflow_index The index of the underflowing subnode.
+    template<bool is_internal>
     void handle_underflow(std::size_t underflow_index);
 };
 
@@ -59,11 +60,11 @@ public:
 /// @brief Gets two adjacent node pointers and merges them into the lower one. Assumes the input nodes are adjacent.
 /// @param lower_node A pointer to a node
 /// @param higher_node A pointer to a node
-template <std::size_t N, OrderedKey Key, Storable Mapped>
+template <std::size_t N, OrderedKey Key, Storable Mapped, bool is_internal>
 void merge(BPlusNode<N, Key, Mapped>* lower_node, BPlusNode<N, Key, Mapped>* higher_node){
     for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
         lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
-        std::get<1>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<1>(higher_node->m_data)[i];
+        std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
     }
 
     lower_node->m_key_counter += higher_node->m_key_counter + 1;
@@ -99,12 +100,13 @@ Mapped *BPlusNode<N, Key, Mapped>::search(const Key &key) const
 {
     auto index = find_smallest_bigger_key_index(key);
     if (index == 0) return nullptr;
+    else --index;
     if (m_data.index() == 0){
         // in leafs, d[i] corresponds to k[i]; in internal nodes, d[i] contains search keys which are all less than k[i]
-        if (this->m_keys[index - 1] != key) return nullptr; 
-        return std::get<0>(m_data)[index-1];
+        if (this->m_keys[index] != key) return nullptr; 
+        return std::get<0>(m_data)[index];
     }
-    return std::get<1>(m_data)[index - 1]->search(key);
+    return std::get<1>(m_data)[index]->search(key);
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
@@ -119,7 +121,9 @@ BPlusNode<N, Key, Mapped> *BPlusNode<N, Key, Mapped>::insert(const Key& key, con
     }
     else{                                               // if internal
         std::size_t working_index = this->find_smallest_bigger_key_index(key);
+        working_index -= (working_index != 0);
         inserted_ptr = std::get<1>(this->m_data)[working_index]->insert(key, mapped);
+        this->m_keys[working_index] = std::get<1>(this->m_data)[working_index]->m_keys[0];
         if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
         inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
     }
@@ -195,13 +199,20 @@ template <std::size_t N, OrderedKey Key, Storable Mapped>
 bool BPlusNode<N, Key, Mapped>::erase(const Key& key)
 {
     std::size_t i = this->find_smallest_bigger_key_index(key);
+    if (i == 0) return false;
     if (this->m_data.index() != 0){
+        --i;
         auto res = std::get<1>(this->m_data)[i]->erase(key);
-        if (std::get<1>(this->m_data)[i]->m_key_counter >= N/2) return res; // if there's no underflow, return
-        handle_underflow(i);                                       // else, fix the situation and then return
+        if (std::get<1>(this->m_data)[i]->m_key_counter >= N-N/2) return res; // if there's no underflow, return
+        if (std::get<1>(this->m_data)[i]->m_data.index() == 0){ // else, fix the situation and then return
+            handle_underflow<false>(i);
+        }
+        else{
+            handle_underflow<true>(i);
+        }
         return res;
     }
-    if (i==0 || this->m_keys[i-1] != key)
+    if (this->m_keys[i - 1] != key)
         return false;
 
     delete std::get<0>(this->m_data)[i-1];
@@ -234,6 +245,7 @@ std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key 
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
+template<bool is_internal>
 void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
@@ -245,11 +257,11 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
             // first move all things here rightwards
             for (std::size_t i = underflow_subnode->m_key_counter; i > 0; --i) {
                 underflow_subnode->m_keys[i] = underflow_subnode->m_keys[i - 1];
-                std::get<1>(underflow_subnode->m_data)[i] = std::get<1>(underflow_subnode->m_data)[i - 1];
+                std::get<is_internal>(underflow_subnode->m_data)[i] = std::get<is_internal>(underflow_subnode->m_data)[i - 1];
             }
             // then borrow at the start
             underflow_subnode->m_keys[0] = neighbour_subnode->m_keys[neighbour_subnode->m_key_counter - 1];
-            std::get<1>(underflow_subnode->m_data)[0] = std::get<1>(neighbour_subnode->m_data)[neighbour_subnode->m_key_counter - 1];
+            std::get<is_internal>(underflow_subnode->m_data)[0] = std::get<is_internal>(neighbour_subnode->m_data)[neighbour_subnode->m_key_counter - 1];
 
             --neighbour_subnode->m_key_counter;
             ++underflow_subnode->m_key_counter;
@@ -259,14 +271,14 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
         else{
             // first borrow at the end
             underflow_subnode->m_keys[underflow_subnode->m_key_counter] = neighbour_subnode->m_keys[0];
-            std::get<1>(underflow_subnode->m_data)[underflow_subnode->m_key_counter] = std::get<1>(neighbour_subnode->m_data)[0];
+            std::get<is_internal>(underflow_subnode->m_data)[underflow_subnode->m_key_counter] = std::get<is_internal>(neighbour_subnode->m_data)[0];
 
             --neighbour_subnode->m_key_counter;
             ++underflow_subnode->m_key_counter;
             // then move all the neighbour's leftwards
-            for (std::size_t i = 0; i < underflow_subnode->m_key_counter; ++i) {
+            for (std::size_t i = 0; i < neighbour_subnode->m_key_counter; ++i) {
                 neighbour_subnode->m_keys[i] = neighbour_subnode->m_keys[i + 1];
-                std::get<1>(neighbour_subnode->m_data)[i] = std::get<1>(neighbour_subnode->m_data)[i + 1];
+                std::get<is_internal>(neighbour_subnode->m_data)[i] = std::get<is_internal>(neighbour_subnode->m_data)[i + 1];
             }
             // then fix extremes and this' keys
             this->m_keys[neighbour_index] = neighbour_subnode->m_keys[0];
@@ -275,10 +287,10 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
     else{
         // Case 2: merge
         if (underflow_index > neighbour_index) { 
-            merge(neighbour_subnode, underflow_subnode);
+            merge<N, Key, Mapped, is_internal>(neighbour_subnode, underflow_subnode);
         }
         else { 
-            merge(underflow_subnode, neighbour_subnode);
+            merge<N, Key, Mapped, is_internal>(underflow_subnode, neighbour_subnode);
         }
 
         this->m_key_counter--;
