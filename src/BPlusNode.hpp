@@ -87,6 +87,7 @@ BPlusNode<N, Key, Mapped>::BPlusNode(bool is_leaf)
     m_key_counter = 0;
     m_next = nullptr;
     m_prev = nullptr;
+    m_keys = std::array<Key, N>();
     if (is_leaf){
         m_data = std::array<Mapped*, N> ();
     }
