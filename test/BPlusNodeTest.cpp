@@ -192,6 +192,7 @@ int main(){
         new_odd_leaf->erase_all();
         delete new_odd_leaf;
 
+        odd_leaf.m_next = nullptr; // new_odd_leaf got deleted, preventing a pointer error
         odd_leaf.insert(40,40);
         odd_leaf.insert(10,10);
         odd_leaf.insert(20,20);
