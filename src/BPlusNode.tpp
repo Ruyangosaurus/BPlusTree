@@ -1,95 +1,17 @@
-#ifndef BPLUS_NODE_CLASS_DEFINED
-#define BPLUS_NODE_CLASS_DEFINED
-
-#include "Constraints.hpp"
-#include <stdexcept>
-#include <array>
-#include <variant>
-
-template<std::size_t N, OrderedKey Key, Storable Mapped>
-class BPlusNode{
-public:
-    std::size_t m_key_counter;
-    std::array<Key, N> m_keys;
-    std::variant<std::array<Mapped*, N>, std::array<BPlusNode*, N>> m_data; // either Mapped* in leafs or BPlusNode* in internal nodes
-    BPlusNode* m_next, * m_prev;
-public:
-
-    /// @brief Creates an empty node
-    /// @param is_leaf A flag for creating either a leaf (if true) or an internal node (if false)
-    BPlusNode(bool);
-
-    /// @brief Searches for the data associated with a given key in the node's subtree.
-    /// @param key The key to search for.
-    /// @return A pointer to the mapped data associated with the key or nullptr if there isn't one.
-    Mapped* search (const Key&) const;
-
-    /// @brief Inserts a new key and its associated data into the node's subtree.
-    /// @param key The key to insert.
-    /// @param data The data associated with the key.
-    /// @return A pointer to the newly created node if the node was full and split. Otherwise, returns `nullptr` if the insertion is successful and the node is not full.
-    BPlusNode* insert (const Key&, const Mapped&);
-
-    /// @brief Deletes the data associated with the given key from the node. 
-    /// @param key The key to erase.
-    /// @return `true` if the deletion was successful, `false` otherwise.
-    bool erase(const Key&);
-
-    /// @brief Removes all data if present.
-    void erase_all();
-
-    /// @brief Finds the index of the smallest key in the node that is strictly greater than the given key.
-    /// @param key The key to find the smallest bigger key for.
-    /// @return The index of the smallest key larger than the given `key` in the `m_keys` array.
-    /// @note Time Complexity: O(log x), where x is the number of keys currently stored in the node.
-    /// @note Space Complexity: O(1).
-    std::size_t find_smallest_bigger_key_index(const Key& key) const;
-
-    /// @brief Handles underflows that occur after deletion in an internal node. This method is responsible for
-    ///        deciding whether to merge nodes or redistribute keys between siblings, and it propagates the underflow
-    ///        signal to the parent if necessary.
-    /// @param underflow_index The index of the underflowing subnode.
-    template<bool is_internal>
-    void handle_underflow(std::size_t underflow_index);
-};
-
-//////////////////////////////////////////////////////////////////////////////////
-//                           Auxiliary Function Block                           //
-//////////////////////////////////////////////////////////////////////////////////
-
-/// @brief Gets two adjacent node pointers and merges them into the lower one. Assumes the input nodes are adjacent.
-/// @param lower_node A pointer to a node
-/// @param higher_node A pointer to a node
-template <std::size_t N, OrderedKey Key, Storable Mapped, bool is_internal>
-void merge(BPlusNode<N, Key, Mapped>* lower_node, BPlusNode<N, Key, Mapped>* higher_node){
-    for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
-        lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
-        std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
-    }
-
-    lower_node->m_key_counter += higher_node->m_key_counter;
-
-    if (higher_node->m_next){
-        higher_node->m_next->m_prev = lower_node;
-    }
-    lower_node->m_next = higher_node->m_next;
-
-    delete higher_node;
-}
+#include "BPlusTree.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////
 //                        BPlusNode Implementation Block                        //
 //////////////////////////////////////////////////////////////////////////////////
-
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusNode<N, Key, Mapped>::BPlusNode(bool is_leaf)
+BPlusTree<N, Key, Mapped>::BPlusNode::BPlusNode(bool is_leaf)
 {
     m_key_counter = 0;
     m_next = nullptr;
     m_prev = nullptr;
     m_keys = std::array<Key, N>();
     if (is_leaf){
-        m_data = std::array<Mapped*, N> ();
+        m_data = std::array<pointer, N> ();
     }
     else{
         m_data = std::array<BPlusNode*, N> ();
@@ -97,7 +19,7 @@ BPlusNode<N, Key, Mapped>::BPlusNode(bool is_leaf)
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-Mapped *BPlusNode<N, Key, Mapped>::search(const Key &key) const
+BPlusTree<N, Key, Mapped>::pointer BPlusTree<N, Key, Mapped>::BPlusNode::search(const key_type& key) const
 {
     auto index = find_smallest_bigger_key_index(key);
     if (index == 0) return nullptr;
@@ -111,19 +33,19 @@ Mapped *BPlusNode<N, Key, Mapped>::search(const Key &key) const
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusNode<N, Key, Mapped> *BPlusNode<N, Key, Mapped>::insert(const Key& key, const Mapped& mapped)
+BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::BPlusNode::insert(key_type&&key, mapped_type&&mapped)
 {
-    std::variant<Mapped*, BPlusNode*> inserted_ptr;
+    std::variant<pointer, BPlusNode*> inserted_ptr;
     Key inserted_key;
     if (m_data.index() == 0){                           // if leaf
         if (search(key) != nullptr) return nullptr;
-        inserted_ptr = new Mapped (mapped);
-        inserted_key = Key (key);
+        inserted_ptr = new value_type (std::move(mapped));
+        inserted_key = Key (std::move(key));
     }
     else{                                               // if internal
         std::size_t working_index = this->find_smallest_bigger_key_index(key);
         working_index -= (working_index != 0);
-        inserted_ptr = std::get<1>(this->m_data)[working_index]->insert(key, mapped);
+        inserted_ptr = std::get<1>(this->m_data)[working_index]->insert(std::move(key), std::move(mapped));
         this->m_keys[working_index] = std::get<1>(this->m_data)[working_index]->m_keys[0];
         if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
         inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
@@ -180,24 +102,7 @@ BPlusNode<N, Key, Mapped> *BPlusNode<N, Key, Mapped>::insert(const Key& key, con
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-void BPlusNode<N, Key, Mapped>::erase_all()
-{
-    if (this->m_data.index() == 0){
-        for (std::size_t i = 0; i < this->m_key_counter; ++i){
-            delete std::get<0>(this->m_data)[i];
-        }
-    }
-    else{
-        for (std::size_t i = 0; i < this->m_key_counter; ++i){
-            std::get<1>(this->m_data)[i]->erase_all();
-            delete std::get<1>(this->m_data)[i];
-        }
-    }
-    this->m_key_counter = 0;
-}
-
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-bool BPlusNode<N, Key, Mapped>::erase(const Key& key)
+bool BPlusTree<N, Key, Mapped>::BPlusNode::erase(const key_type& key)
 {
     std::size_t i = this->find_smallest_bigger_key_index(key);
     if (i == 0) return false;
@@ -227,7 +132,24 @@ bool BPlusNode<N, Key, Mapped>::erase(const Key& key)
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key &key) const
+void BPlusTree<N, Key, Mapped>::BPlusNode::erase_all()
+{
+    if (this->m_data.index() == 0){
+        for (std::size_t i = 0; i < this->m_key_counter; ++i){
+            delete std::get<0>(this->m_data)[i];
+        }
+    }
+    else{
+        for (std::size_t i = 0; i < this->m_key_counter; ++i){
+            std::get<1>(this->m_data)[i]->erase_all();
+            delete std::get<1>(this->m_data)[i];
+        }
+    }
+    this->m_key_counter = 0;
+}
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+BPlusTree<N, Key, Mapped>::size_type BPlusTree<N, Key, Mapped>::BPlusNode::find_smallest_bigger_key_index(const key_type& key) const
 {
     std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
     // binary search, T(n) = O(log n) & S(n) = O(1)
@@ -246,12 +168,12 @@ std::size_t BPlusNode<N, Key, Mapped>::find_smallest_bigger_key_index(const Key 
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
-template<bool is_internal>
-void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
+template <bool is_internal>
+void BPlusTree<N, Key, Mapped>::BPlusNode::handle_underflow(size_type underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
     std::size_t neighbour_index = (underflow_index > 0) ? underflow_index - 1 : underflow_index + 1;
-    BPlusNode<N, Key, Mapped>* underflow_subnode = std::get<1>(this->m_data)[underflow_index], * neighbour_subnode = std::get<1>(this->m_data)[neighbour_index];
+    BPlusNode* underflow_subnode = std::get<1>(this->m_data)[underflow_index], * neighbour_subnode = std::get<1>(this->m_data)[neighbour_index];
     if (underflow_subnode->m_key_counter + neighbour_subnode->m_key_counter > N){
         // Case 1: borrow
         if (underflow_index > neighbour_index){
@@ -288,7 +210,7 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
     else{
         // Case 2: merge
         if (underflow_index > neighbour_index) { 
-            merge<N, Key, Mapped, is_internal>(neighbour_subnode, underflow_subnode);
+            merge<is_internal>(neighbour_subnode, underflow_subnode);
             for (std::size_t i = underflow_index; i < this->m_key_counter; ++i) {
                 this->m_keys[i] = this->m_keys[i + 1];
                 std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
@@ -296,7 +218,7 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
             this->m_key_counter--;
         }
         else { 
-            merge<N, Key, Mapped, is_internal>(underflow_subnode, neighbour_subnode);
+            merge<is_internal>(underflow_subnode, neighbour_subnode);
             for (std::size_t i = neighbour_index; i < this->m_key_counter; ++i) {
                 this->m_keys[i] = this->m_keys[i + 1];
                 std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
@@ -306,4 +228,55 @@ void BPlusNode<N, Key, Mapped>::handle_underflow(std::size_t underflow_index)
     }
 }
 
-#endif
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+template <bool is_internal>
+void BPlusTree<N, Key, Mapped>::merge(BPlusTree::BPlusNode* lower_node, BPlusTree::BPlusNode* higher_node){
+    for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
+        lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
+        std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
+    }
+
+    lower_node->m_key_counter += higher_node->m_key_counter;
+
+    if (higher_node->m_next){
+        higher_node->m_next->m_prev = lower_node;
+    }
+    lower_node->m_next = higher_node->m_next;
+
+    delete higher_node;
+}
+
+template <std::size_t N, OrderedKey Key, Storable Mapped>
+BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::copy(const BPlusNode *source, const BPlusNode *prev, bool has_min, bool has_max)
+{
+    BPlusNode* out = new BPlusNode (source->m_data.index());
+    out->m_prev = prev;
+    if (prev){
+        prev->m_next = out;
+    }
+    out->m_key_counter = source->m_key_counter;
+    for (size_type i = 0; i < out->m_key_counter; ++i){
+        out->m_keys[i] = source->m_keys[i];
+    }
+    if (source->m_data.index() == 0){
+        for (size_type i = 0; i < out->m_key_counter; ++i){
+            std::get<0>(out->m_data)[i] = new value_type (std::get<0>(source->m_data)[i]);
+        }
+        if (has_min){
+            m_min = out;
+        }
+        if (has_max){
+            m_max = out;
+        }
+    }
+    else{
+        size_type i = 0;
+        std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], nullptr, has_min, false);
+        for (++i; i < out->m_key_counter - 1; ++i){
+            std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, false);
+        }
+        std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, has_max);
+    }
+    return out;
+}
