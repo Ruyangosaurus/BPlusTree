@@ -58,17 +58,16 @@ BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::BPlusNode::inse
         inserting_node = (inserted_key < this->m_keys[N/2]) ? this : new_node; // choose the smaller node
         out_ptr = new_node;
 
+        std::copy_n(this->m_keys.begin() + mid, this->m_key_counter - mid, new_node->m_keys.begin());
         if (this->m_data.index() == 0){
-            for (std::size_t i = mid; i < N; ++i) {
-                std::get<0>(new_node->m_data)[i - mid] = std::get<0>(this->m_data)[i];
-                new_node->m_keys[i - mid] = this->m_keys[i];
-            }
+            std::copy_n(std::get<0>(this->m_data).begin() + mid,               // first
+                        this->m_key_counter - mid,                             // count
+                        std::get<0>(new_node->m_data).begin());                // result
         }
         else{
-            for (std::size_t i = mid; i < N; ++i) {
-                std::get<1>(new_node->m_data)[i - mid] = std::get<1>(this->m_data)[i];
-                new_node->m_keys[i - mid] = this->m_keys[i];
-            }
+            std::copy_n(std::get<1>(this->m_data).begin() + mid, 
+                        this->m_key_counter - mid, 
+                        std::get<1>(new_node->m_data).begin());
         }
         this->m_key_counter = mid;
         new_node->m_key_counter = N - mid;
@@ -123,10 +122,13 @@ bool BPlusTree<N, Key, Mapped>::BPlusNode::erase(const key_type& key)
 
     delete std::get<0>(this->m_data)[i-1];
     
-    for (; i < this->m_key_counter; ++i){ // move them all one step left
-        std::get<0>(this->m_data)[i-1] = std::get<0>(this->m_data)[i];
-        this->m_keys[i-1] = this->m_keys[i];
-    }
+    std::copy_n(std::get<0>(this->m_data).begin() + i,      // move everything left
+                this->m_key_counter - i, 
+                std::get<0>(this->m_data).begin() + i - 1);
+    std::copy_n(this->m_keys.begin() + i, 
+                this->m_key_counter - i, 
+                this->m_keys.begin() + i - 1);
+
     --this->m_key_counter;
     return true;
 }
@@ -199,10 +201,12 @@ void BPlusTree<N, Key, Mapped>::BPlusNode::handle_underflow(size_type underflow_
             --neighbour_subnode->m_key_counter;
             ++underflow_subnode->m_key_counter;
             // then move all the neighbour's leftwards
-            for (std::size_t i = 0; i < neighbour_subnode->m_key_counter; ++i) {
-                neighbour_subnode->m_keys[i] = neighbour_subnode->m_keys[i + 1];
-                std::get<is_internal>(neighbour_subnode->m_data)[i] = std::get<is_internal>(neighbour_subnode->m_data)[i + 1];
-            }
+            std::copy_n(std::get<is_internal>(neighbour_subnode->m_data).begin() + 1,      // move everything left
+                        neighbour_subnode->m_key_counter, 
+                        std::get<is_internal>(neighbour_subnode->m_data).begin());
+            std::copy_n(neighbour_subnode->m_keys.begin() + 1, 
+                        neighbour_subnode->m_key_counter, 
+                        neighbour_subnode->m_keys.begin());
             // then fix extremes and this' keys
             this->m_keys[neighbour_index] = neighbour_subnode->m_keys[0];
         }
@@ -211,20 +215,18 @@ void BPlusTree<N, Key, Mapped>::BPlusNode::handle_underflow(size_type underflow_
         // Case 2: merge
         if (underflow_index > neighbour_index) { 
             merge<is_internal>(neighbour_subnode, underflow_subnode);
-            for (std::size_t i = underflow_index; i < this->m_key_counter; ++i) {
-                this->m_keys[i] = this->m_keys[i + 1];
-                std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
-            }
-            this->m_key_counter--;
         }
         else { 
             merge<is_internal>(underflow_subnode, neighbour_subnode);
-            for (std::size_t i = neighbour_index; i < this->m_key_counter; ++i) {
-                this->m_keys[i] = this->m_keys[i + 1];
-                std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i + 1];
-            }
-            this->m_key_counter--;
         }
+        std::size_t i = std::max(underflow_index, neighbour_index) + 1;
+        std::copy_n(std::get<1>(this->m_data).begin() + i,      // move everything left
+                    this->m_key_counter - i, 
+                    std::get<1>(this->m_data).begin() + i - 1);
+        std::copy_n(this->m_keys.begin() + i, 
+                    this->m_key_counter - i, 
+                    this->m_keys.begin() + i - 1);
+        this->m_key_counter--;
     }
 }
 
