@@ -1,4 +1,4 @@
-#include "BPLusTest.hpp"
+#include "BPlusTest.hpp"
 
 void BPlusTest::test_nodes(){
     std::cout << "LEAF TESTS:\n";
@@ -18,7 +18,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(odd_leaf.erase(0) == false);
         even_leaf.erase_all();
         odd_leaf.erase_all();
-        _CONCLUDE;
+        return passed;
     });
 
     tester("2. basic insertion", []{
@@ -55,7 +55,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         _ASSERT(even_leaf.m_key_counter == 0);
         _ASSERT(odd_leaf.m_key_counter == 0);
-        _CONCLUDE;
+        return passed;
     });
 
     tester("3. insertion above split", []{
@@ -96,7 +96,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         new_odd_leaf->erase_all();
         delete new_odd_leaf;
-        _CONCLUDE;
+        return passed;
     });
 
     tester("4. insertion below split", []{
@@ -137,7 +137,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         new_odd_leaf->erase_all();
         delete new_odd_leaf;
-        _CONCLUDE;
+        return passed;
     });
 
     tester("5. insertion near split", []{
@@ -198,7 +198,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         new_odd_leaf->erase_all();
         delete new_odd_leaf;
-        _CONCLUDE;
+        return passed;
     });
 
     tester("6. duplicate insertion", []{
@@ -221,7 +221,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         _ASSERT(even_leaf.m_key_counter == 0);
         _ASSERT(odd_leaf.m_key_counter == 0);
-        _CONCLUDE;
+        return passed;
     });
 
     tester("7. deletion", []{
@@ -337,7 +337,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.erase_all();
         _ASSERT(even_leaf.m_key_counter == 0);
         _ASSERT(odd_leaf.m_key_counter == 0);
-        _CONCLUDE;
+        return passed;
     });
 
     std::cout << "INTERNAL NODE TESTS:\n";
@@ -414,7 +414,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(odd_node.search(-1) == nullptr);
         odd_leaf_1.erase_all();
         odd_leaf_2.erase_all();
-        _CONCLUDE;
+        return passed;
     });
 
     tester("9. basic insertion", []{
@@ -490,7 +490,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(odd_node.search(80)) == 80);
         odd_leaf_1.erase_all();
         odd_leaf_2.erase_all();
-        _CONCLUDE;
+        return passed;
     });
 
     tester("10. insertion with subnode splitting", []{
@@ -572,7 +572,7 @@ void BPlusTest::test_nodes(){
         odd_leaf_2.erase_all();
         std::get<1>(odd_node.m_data)[1]->erase_all();
         delete std::get<1>(odd_node.m_data)[1];
-        _CONCLUDE;
+        return passed;
     });
 
     tester("11. insertion with this splitting", []{
@@ -680,7 +680,7 @@ void BPlusTest::test_nodes(){
         odd_node.erase_all();
         new_odd_node->erase_all();
         delete new_odd_node;
-        _CONCLUDE;
+        return passed;
     });
 
     tester("12. basic deletion", []{
@@ -962,7 +962,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(odd_node.search(120) == nullptr);
         _ASSERT(odd_node.search(130) == nullptr);
         _ASSERT(odd_node.search(140) == nullptr);
-        _CONCLUDE;
+        return passed;
     });
 
     tester("13. burrowing from the right", []{
@@ -1033,7 +1033,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(odd_node.search(50)) == 50);
         odd_node.erase_all();
 
-        _CONCLUDE;
+        return passed;
     });
 
     tester("14. burrowing from the left", []{
@@ -1116,7 +1116,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(odd_node.search(50)) == 50);
         odd_node.erase_all();
 
-        _CONCLUDE;
+        return passed;
     });
 
     tester("15. merging with the right", []{
@@ -1176,7 +1176,7 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(odd_node.search(40)) == 40);
         odd_node.erase_all();
 
-        _CONCLUDE;
+        return passed;
     });
 
     tester("16. merging with the left", []{
@@ -1263,6 +1263,6 @@ void BPlusTest::test_nodes(){
         _ASSERT(odd_node.search(50) == nullptr);
         odd_node.erase_all();
 
-        _CONCLUDE;
+        return passed;
     });
 }
