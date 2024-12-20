@@ -6,6 +6,7 @@
 #include <array>
 #include <variant>
 #include <string>
+#include <algorithm>
 
 template<std::size_t N, OrderedKey Key, Storable Mapped>
 class BPlusTree{
@@ -83,7 +84,7 @@ private:
 
 private:
     size_type m_size; 
-    BPlusNode* m_root, m_min, m_max;
+    BPlusNode* m_root,* m_min,* m_max;
 public:
     /// @brief Creates an empty BPlusTree.
     BPlusTree();
@@ -203,11 +204,12 @@ void BPlusTree<N, Key, Mapped>::insert(const key_type& key, const mapped_type& m
 template <std::size_t N, OrderedKey Key, Storable Mapped>
 void BPlusTree<N, Key, Mapped>::insert(key_type&& key, mapped_type&& mapped)
 {
-    auto new_node = m_root->insert(key, mapped);
+    auto new_node = m_root->insert(std::move(key), std::move(mapped));
     if (new_node){
         BPlusNode* new_root = new BPlusNode (false);
-        new_root->m_keys[0] = m_root[0];
-        new_root->m_keys[1] = new_node[0];
+        new_root->m_key_counter = 2;
+        new_root->m_keys[0] = m_root->m_keys[0];
+        new_root->m_keys[1] = new_node->m_keys[0];
         std::get<1>(new_root->m_data)[0] = m_root;
         std::get<1>(new_root->m_data)[1] = new_node;
         m_root = new_root;
@@ -246,7 +248,7 @@ BPlusTree<N, Key, Mapped>::mapped_type& BPlusTree<N, Key, Mapped>::at(const key_
     if (search_result){
         return *search_result;
     }
-    throw std::out_of_range("BPlusTree::at: No value associated with the key (which is " + key + " ) was found.\n");
+    throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
 }
 
 template <std::size_t N, OrderedKey Key, Storable Mapped>
@@ -256,7 +258,7 @@ const BPlusTree<N, Key, Mapped>::mapped_type& BPlusTree<N, Key, Mapped>::at(cons
     if (search_result){
         return *search_result;
     }
-    throw std::out_of_range("BPlusTree::at: No value associated with the key (which is " + key + " ) was found.\n");
+    throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
 }
 
 #endif
