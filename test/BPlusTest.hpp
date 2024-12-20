@@ -10,11 +10,13 @@ const char* const failed = " - FAILED\n";
 const char* const passed = " - PASSED\n";
 
 #define _ASSERT(smth) if (!(smth)) return failed
-#define _CONCLUDE return passed
 
 class BPlusTest{
     /// @brief Tests the correctness of behaviour of the nodes of the tree.
     void test_nodes();
+
+    /// @brief Tests the correctness of behaviour of insert, erase, and at.
+    void test_crud();
 
     /// @brief Auxiliary testing function, prints the name and the output of the function.
     /// @param name The name of the test.
