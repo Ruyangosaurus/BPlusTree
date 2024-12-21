@@ -8,7 +8,7 @@
 #include <string>
 #include <algorithm>
 
-template<std::size_t N, OrderedKey Key, Storable Mapped>
+template<OrderedKey Key, Storable Mapped, std::size_t N>
 class BPlusTree{
 public:
     using key_type = Key;
@@ -108,6 +108,12 @@ public:
     /// @param other Another BPlusTree
     BPlusTree& operator= (BPlusTree&& other);
 
+    /// @brief Returns the number of keys and mapped values in the tree.
+    size_type size() const;
+
+    /// @brief Checks if the tree is empty
+    bool is_empty() const;
+
     /// @brief Inserts a new key and its associated data into the tree.
     /// @param key The key to insert.
     /// @param data The data associated with the key.
@@ -137,8 +143,8 @@ public:
 //                      BPlusTree CTOR, DTOR, & =TOR Block                      //
 //////////////////////////////////////////////////////////////////////////////////
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusTree()
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusTree()
 {
     m_size = 0;
     m_root = new BPlusNode(true);
@@ -146,15 +152,15 @@ BPlusTree<N, Key, Mapped>::BPlusTree()
     m_max = m_root;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusTree(const BPlusTree &other)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusTree(const BPlusTree &other)
 {
     m_size = other.m_size;
     m_root = copy(other.m_root, nullptr, true, true);
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusTree(BPlusTree &&other)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusTree(BPlusTree &&other)
 {
     m_size = other.m_size;
     m_root = other.m_root;
@@ -162,15 +168,15 @@ BPlusTree<N, Key, Mapped>::BPlusTree(BPlusTree &&other)
     m_max = other.m_max;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::~BPlusTree()
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::~BPlusTree()
 {
     m_root->erase_all();
     delete m_root;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>& BPlusTree<N, Key, Mapped>::operator=(const BPlusTree &other)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>& BPlusTree<Key, Mapped, N>::operator=(const BPlusTree &other)
 {
     m_root->erase_all();
     delete m_root;
@@ -179,8 +185,8 @@ BPlusTree<N, Key, Mapped>& BPlusTree<N, Key, Mapped>::operator=(const BPlusTree 
     return *this;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>& BPlusTree<N, Key, Mapped>::operator=(BPlusTree &&other)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>& BPlusTree<Key, Mapped, N>::operator=(BPlusTree &&other)
 {
     m_root->erase_all();
     delete m_root;
@@ -189,20 +195,32 @@ BPlusTree<N, Key, Mapped>& BPlusTree<N, Key, Mapped>::operator=(BPlusTree &&othe
     m_min = other.m_min;
     m_max = other.m_max;
     return *this;
+}
+
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::size() const
+{
+    return m_size;
+}
+
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+bool BPlusTree<Key, Mapped, N>::is_empty() const
+{
+    return m_size == 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 //                           BPlusTree CRUD API Block                           //
 //////////////////////////////////////////////////////////////////////////////////
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-void BPlusTree<N, Key, Mapped>::insert(const key_type& key, const mapped_type& mapped)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+void BPlusTree<Key, Mapped, N>::insert(const key_type& key, const mapped_type& mapped)
 {
     insert(key_type(key), mapped_type(mapped));
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-void BPlusTree<N, Key, Mapped>::insert(key_type&& key, mapped_type&& mapped)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+void BPlusTree<Key, Mapped, N>::insert(key_type&& key, mapped_type&& mapped)
 {
     auto new_node = m_root->insert(std::move(key), std::move(mapped));
     if (new_node){
@@ -217,8 +235,8 @@ void BPlusTree<N, Key, Mapped>::insert(key_type&& key, mapped_type&& mapped)
     ++m_size;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-bool BPlusTree<N, Key, Mapped>::erase(const key_type& key)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+bool BPlusTree<Key, Mapped, N>::erase(const key_type& key)
 {
     bool out = m_root->erase(key);
     if (m_root->m_key_counter == 1 && m_root->m_data.index() == 1){
@@ -231,8 +249,8 @@ bool BPlusTree<N, Key, Mapped>::erase(const key_type& key)
     return out;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-void BPlusTree<N, Key, Mapped>::erase_all()
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+void BPlusTree<Key, Mapped, N>::erase_all()
 {
     m_root->erase_all();
     m_size = 0;
@@ -241,8 +259,8 @@ void BPlusTree<N, Key, Mapped>::erase_all()
     m_max = m_root;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::mapped_type& BPlusTree<N, Key, Mapped>::at(const key_type &key)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::mapped_type& BPlusTree<Key, Mapped, N>::at(const key_type &key)
 {
     pointer search_result = m_root->search(key);
     if (search_result){
@@ -251,8 +269,8 @@ BPlusTree<N, Key, Mapped>::mapped_type& BPlusTree<N, Key, Mapped>::at(const key_
     throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-const BPlusTree<N, Key, Mapped>::mapped_type& BPlusTree<N, Key, Mapped>::at(const key_type &key) const
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+const BPlusTree<Key, Mapped, N>::mapped_type& BPlusTree<Key, Mapped, N>::at(const key_type &key) const
 {
     pointer search_result = m_root->search(key);
     if (search_result){
