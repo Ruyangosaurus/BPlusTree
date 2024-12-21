@@ -4,8 +4,8 @@ void BPlusTest::test_nodes(){
     std::cout << "LEAF TESTS:\n";
 
     tester("1. empty leaf", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         _ASSERT(even_leaf.m_key_counter == 0);
         _ASSERT(odd_leaf.m_key_counter == 0);
         _ASSERT(even_leaf.m_next == nullptr);
@@ -22,8 +22,8 @@ void BPlusTest::test_nodes(){
     });
 
     tester("2. basic insertion", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(0,0);
         even_leaf.insert(10,10);
         even_leaf.insert(30,30);
@@ -59,14 +59,14 @@ void BPlusTest::test_nodes(){
     });
 
     tester("3. insertion above split", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(10,10);
         even_leaf.insert(20,20);
         even_leaf.insert(40,40);
         even_leaf.insert(0,0);
 
-        BPlusTree<4,int,int>::BPlusNode* new_even_leaf = even_leaf.insert(30,30);
+        BPlusTree<int,int,4>::BPlusNode* new_even_leaf = even_leaf.insert(30,30);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -84,7 +84,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.insert(50,50);
         odd_leaf.insert(0,0);
 
-        BPlusTree<5,int,int>::BPlusNode* new_odd_leaf = odd_leaf.insert(40,40);
+        BPlusTree<int,int,5>::BPlusNode* new_odd_leaf = odd_leaf.insert(40,40);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -100,14 +100,14 @@ void BPlusTest::test_nodes(){
     });
 
     tester("4. insertion below split", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(30,30);
         even_leaf.insert(20,20);
         even_leaf.insert(40,40);
         even_leaf.insert(0,0);
 
-        BPlusTree<4,int,int>::BPlusNode* new_even_leaf = even_leaf.insert(10,10);
+        BPlusTree<int,int,4>::BPlusNode* new_even_leaf = even_leaf.insert(10,10);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -125,7 +125,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.insert(50,50);
         odd_leaf.insert(0,0);
 
-        BPlusTree<5,int,int>::BPlusNode* new_odd_leaf = odd_leaf.insert(10,10);
+        BPlusTree<int,int,5>::BPlusNode* new_odd_leaf = odd_leaf.insert(10,10);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -141,14 +141,14 @@ void BPlusTest::test_nodes(){
     });
 
     tester("5. insertion near split", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(30,30);
         even_leaf.insert(10,10);
         even_leaf.insert(40,40);
         even_leaf.insert(0,0);
 
-        BPlusTree<4,int,int>::BPlusNode* new_even_leaf = even_leaf.insert(20,20);
+        BPlusTree<int,int,4>::BPlusNode* new_even_leaf = even_leaf.insert(20,20);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -166,7 +166,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.insert(50,50);
         odd_leaf.insert(0,0);
 
-        BPlusTree<5,int,int>::BPlusNode* new_odd_leaf = odd_leaf.insert(20,20);
+        BPlusTree<int,int,5>::BPlusNode* new_odd_leaf = odd_leaf.insert(20,20);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -202,8 +202,8 @@ void BPlusTest::test_nodes(){
     });
 
     tester("6. duplicate insertion", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(0,0);
         odd_leaf.insert(10,10);
         
@@ -225,8 +225,8 @@ void BPlusTest::test_nodes(){
     });
 
     tester("7. deletion", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf (true);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf (true);
         even_leaf.insert(0,0);
         even_leaf.insert(10,10);
         even_leaf.insert(30,30);
@@ -343,17 +343,17 @@ void BPlusTest::test_nodes(){
     std::cout << "INTERNAL NODE TESTS:\n";
     
     tester("8. search", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf_1 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_1 (true);
         even_leaf_1.insert(0,0);
         even_leaf_1.insert(10,10);
         even_leaf_1.insert(30,30);
         even_leaf_1.insert(20,20);
-        BPlusTree<4,int,int>::BPlusNode even_leaf_2 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_2 (true);
         even_leaf_2.insert(40,40);
         even_leaf_2.insert(50,50);
         even_leaf_2.insert(60,60);
         even_leaf_2.insert(70,70);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 2;
         std::get<1>(even_node.m_data)[0] = &even_leaf_1;
         std::get<1>(even_node.m_data)[1] = &even_leaf_2;
@@ -377,19 +377,19 @@ void BPlusTest::test_nodes(){
         even_leaf_1.erase_all();
         even_leaf_2.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_1 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_1 (true);
         odd_leaf_1.insert(0,0);
         odd_leaf_1.insert(10,10);
         odd_leaf_1.insert(30,30);
         odd_leaf_1.insert(-10,-10);
         odd_leaf_1.insert(20,20);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_2 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_2 (true);
         odd_leaf_2.insert(40,40);
         odd_leaf_2.insert(50,50);
         odd_leaf_2.insert(60,60);
         odd_leaf_2.insert(80,80);
         odd_leaf_2.insert(70,70);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 2;
         std::get<1>(odd_node.m_data)[0] = &odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = &odd_leaf_2;
@@ -418,13 +418,13 @@ void BPlusTest::test_nodes(){
     });
 
     tester("9. basic insertion", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf_1 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_1 (true);
         even_leaf_1.insert(0,0);
         even_leaf_1.insert(10,10);
-        BPlusTree<4,int,int>::BPlusNode even_leaf_2 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_2 (true);
         even_leaf_2.insert(60,60);
         even_leaf_2.insert(70,70);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 2;
         std::get<1>(even_node.m_data)[0] = &even_leaf_1;
         std::get<1>(even_node.m_data)[1] = &even_leaf_2;
@@ -452,15 +452,15 @@ void BPlusTest::test_nodes(){
         even_leaf_1.erase_all();
         even_leaf_2.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_1 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_1 (true);
         odd_leaf_1.insert(0,0);
         odd_leaf_1.insert(10,10);
         odd_leaf_1.insert(30,30);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_2 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_2 (true);
         odd_leaf_2.insert(40,40);
         odd_leaf_2.insert(50,50);
         
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 2;
         std::get<1>(odd_node.m_data)[0] = &odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = &odd_leaf_2;
@@ -494,17 +494,17 @@ void BPlusTest::test_nodes(){
     });
 
     tester("10. insertion with subnode splitting", []{
-        BPlusTree<4,int,int>::BPlusNode even_leaf_1 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_1 (true);
         even_leaf_1.insert(0,0);
         even_leaf_1.insert(10,10);
         even_leaf_1.insert(30,30);
         even_leaf_1.insert(20,20);
-        BPlusTree<4,int,int>::BPlusNode even_leaf_2 (true);
+        BPlusTree<int,int,4>::BPlusNode even_leaf_2 (true);
         even_leaf_2.insert(80,80);
         even_leaf_2.insert(50,50);
         even_leaf_2.insert(60,60);
         even_leaf_2.insert(70,70);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 2;
         std::get<1>(even_node.m_data)[0] = &even_leaf_1;
         std::get<1>(even_node.m_data)[1] = &even_leaf_2;
@@ -531,19 +531,19 @@ void BPlusTest::test_nodes(){
         std::get<1>(even_node.m_data)[1]->erase_all();
         delete std::get<1>(even_node.m_data)[1];
 
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_1 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_1 (true);
         odd_leaf_1.insert(0,0);
         odd_leaf_1.insert(10,10);
         odd_leaf_1.insert(30,30);
         odd_leaf_1.insert(-10,-10);
         odd_leaf_1.insert(20,20);
-        BPlusTree<5,int,int>::BPlusNode odd_leaf_2 (true);
+        BPlusTree<int,int,5>::BPlusNode odd_leaf_2 (true);
         odd_leaf_2.insert(40,40);
         odd_leaf_2.insert(50,50);
         odd_leaf_2.insert(60,60);
         odd_leaf_2.insert(80,80);
         odd_leaf_2.insert(70,70);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 2;
         std::get<1>(odd_node.m_data)[0] = &odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = &odd_leaf_2;
@@ -576,23 +576,23 @@ void BPlusTest::test_nodes(){
     });
 
     tester("11. insertion with this splitting", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(30,30);
         even_leaf_2->insert(20,20);
         even_leaf_2->insert(40,40);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_3 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_3 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_3->insert(50,50);
         even_leaf_3->insert(60,60);
         even_leaf_3->insert(70,70);
         even_leaf_3->insert(80,80);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_4 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_4 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_4->insert(120,120);
         even_leaf_4->insert(100,100);
         even_leaf_4->insert(110,110);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 4;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -622,29 +622,29 @@ void BPlusTest::test_nodes(){
         new_even_node->erase_all();
         delete new_even_node;
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(-20,-20);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(-10,-10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(20,20);
         odd_leaf_2->insert(10,10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_3 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_3 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_3->insert(50,50);
         odd_leaf_3->insert(40,40);
         odd_leaf_3->insert(60,60);
         odd_leaf_3->insert(70,70);
         odd_leaf_3->insert(80,80);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_4 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_4 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_4->insert(120,120);
         odd_leaf_4->insert(100,100);
         odd_leaf_4->insert(110,110);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_5 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_5 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_5->insert(130,130);
         odd_leaf_5->insert(140,140);
         odd_leaf_5->insert(150,150);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 5;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -684,23 +684,23 @@ void BPlusTest::test_nodes(){
     });
 
     tester("12. basic deletion", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(30,30);
         even_leaf_2->insert(20,20);
         even_leaf_2->insert(40,40);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_3 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_3 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_3->insert(50,50);
         even_leaf_3->insert(60,60);
         even_leaf_3->insert(70,70);
         even_leaf_3->insert(80,80);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_4 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_4 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_4->insert(120,120);
         even_leaf_4->insert(100,100);
         even_leaf_4->insert(110,110);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 4;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -809,29 +809,29 @@ void BPlusTest::test_nodes(){
         _ASSERT(even_node.search(130) == nullptr);
         _ASSERT(even_node.search(140) == nullptr);
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(-20,-20);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(-10,-10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(20,20);
         odd_leaf_2->insert(10,10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_3 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_3 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_3->insert(50,50);
         odd_leaf_3->insert(40,40);
         odd_leaf_3->insert(60,60);
         odd_leaf_3->insert(70,70);
         odd_leaf_3->insert(80,80);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_4 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_4 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_4->insert(120,120);
         odd_leaf_4->insert(100,100);
         odd_leaf_4->insert(110,110);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_5 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_5 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_5->insert(130,130);
         odd_leaf_5->insert(140,140);
         odd_leaf_5->insert(150,150);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 5;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -966,15 +966,15 @@ void BPlusTest::test_nodes(){
     });
 
     tester("13. burrowing from the right", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(30,30);
         even_leaf_2->insert(20,20);
         even_leaf_2->insert(40,40);
         even_leaf_2->insert(50,50);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 2;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -998,16 +998,16 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(even_node.search(50)) == 50);
         even_node.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(10,10);
         odd_leaf_1->insert(-10,-10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(20,20);
         odd_leaf_2->insert(40,40);
         odd_leaf_2->insert(50,50);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 2;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -1037,19 +1037,19 @@ void BPlusTest::test_nodes(){
     });
 
     tester("14. burrowing from the left", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
         even_leaf_1->insert(30,30);
         even_leaf_1->insert(20,20);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(40,40);
         even_leaf_2->insert(50,50);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_3 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_3 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_3->insert(60,60);
         even_leaf_3->insert(70,70);
         even_leaf_3->insert(80,80);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 3;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -1075,20 +1075,20 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(even_node.search(50)) == 50);
         even_node.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(10,10);
         odd_leaf_1->insert(-10,-10);
         odd_leaf_1->insert(20,20);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(40,40);
         odd_leaf_2->insert(50,50);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_3 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_3 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_3->insert(60,60);
         odd_leaf_3->insert(70,70);
         odd_leaf_3->insert(80,80);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 3;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -1120,13 +1120,13 @@ void BPlusTest::test_nodes(){
     });
 
     tester("15. merging with the right", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(30,30);
         even_leaf_2->insert(20,20);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 2;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -1145,15 +1145,15 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(even_node.search(30)) == 30);
         even_node.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(10,10);
         odd_leaf_1->insert(-10,-10);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(20,20);
         odd_leaf_2->insert(40,40);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 2;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -1180,18 +1180,18 @@ void BPlusTest::test_nodes(){
     });
 
     tester("16. merging with the left", []{
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_1 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_1 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_1->insert(0,0);
         even_leaf_1->insert(10,10);
         even_leaf_1->insert(30,30);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_2 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_2 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_2->insert(40,40);
         even_leaf_2->insert(50,50);
-        BPlusTree<4,int,int>::BPlusNode* even_leaf_3 = new BPlusTree<4,int,int>::BPlusNode(true);
+        BPlusTree<int,int,4>::BPlusNode* even_leaf_3 = new BPlusTree<int,int,4>::BPlusNode(true);
         even_leaf_3->insert(60,60);
         even_leaf_3->insert(70,70);
         even_leaf_3->insert(80,80);
-        BPlusTree<4,int,int>::BPlusNode even_node (false);
+        BPlusTree<int,int,4>::BPlusNode even_node (false);
         even_node.m_key_counter = 3;
         std::get<1>(even_node.m_data)[0] = even_leaf_1;
         std::get<1>(even_node.m_data)[1] = even_leaf_2;
@@ -1220,19 +1220,19 @@ void BPlusTest::test_nodes(){
         _ASSERT(*(even_node.search(50)) == 50);
         even_node.erase_all();
 
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_1 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_1 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_1->insert(0,0);
         odd_leaf_1->insert(10,10);
         odd_leaf_1->insert(20,20);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_2 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_2 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_2->insert(30,30);
         odd_leaf_2->insert(40,40);
         odd_leaf_2->insert(50,50);
-        BPlusTree<5,int,int>::BPlusNode* odd_leaf_3 = new BPlusTree<5,int,int>::BPlusNode(true);
+        BPlusTree<int,int,5>::BPlusNode* odd_leaf_3 = new BPlusTree<int,int,5>::BPlusNode(true);
         odd_leaf_3->insert(60,60);
         odd_leaf_3->insert(70,70);
         odd_leaf_3->insert(80,80);
-        BPlusTree<5,int,int>::BPlusNode odd_node (false);
+        BPlusTree<int,int,5>::BPlusNode odd_node (false);
         odd_node.m_key_counter = 3;
         std::get<1>(odd_node.m_data)[0] = odd_leaf_1;
         std::get<1>(odd_node.m_data)[1] = odd_leaf_2;
@@ -1266,3 +1266,4 @@ void BPlusTest::test_nodes(){
         return passed;
     });
 }
+
