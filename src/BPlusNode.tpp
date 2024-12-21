@@ -3,8 +3,8 @@
 //////////////////////////////////////////////////////////////////////////////////
 //                        BPlusNode Implementation Block                        //
 //////////////////////////////////////////////////////////////////////////////////
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusNode::BPlusNode(bool is_leaf)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusNode::BPlusNode(bool is_leaf)
 {
     m_key_counter = 0;
     m_next = nullptr;
@@ -18,8 +18,8 @@ BPlusTree<N, Key, Mapped>::BPlusNode::BPlusNode(bool is_leaf)
     }
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::pointer BPlusTree<N, Key, Mapped>::BPlusNode::search(const key_type& key) const
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::pointer BPlusTree<Key, Mapped, N>::BPlusNode::search(const key_type& key) const
 {
     auto index = find_smallest_bigger_key_index(key);
     if (index == 0) return nullptr;
@@ -32,8 +32,8 @@ BPlusTree<N, Key, Mapped>::pointer BPlusTree<N, Key, Mapped>::BPlusNode::search(
     return std::get<1>(m_data)[index]->search(key);
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::BPlusNode::insert(key_type&&key, mapped_type&&mapped)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::insert(key_type&&key, mapped_type&&mapped)
 {
     std::variant<pointer, BPlusNode*> inserted_ptr;
     Key inserted_key;
@@ -100,8 +100,8 @@ BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::BPlusNode::inse
     return out_ptr;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-bool BPlusTree<N, Key, Mapped>::BPlusNode::erase(const key_type& key)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(const key_type& key)
 {
     std::size_t i = this->find_smallest_bigger_key_index(key);
     if (i == 0) return false;
@@ -133,8 +133,8 @@ bool BPlusTree<N, Key, Mapped>::BPlusNode::erase(const key_type& key)
     return true;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-void BPlusTree<N, Key, Mapped>::BPlusNode::erase_all()
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+void BPlusTree<Key, Mapped, N>::BPlusNode::erase_all()
 {
     if (this->m_data.index() == 0){
         for (std::size_t i = 0; i < this->m_key_counter; ++i){
@@ -150,8 +150,8 @@ void BPlusTree<N, Key, Mapped>::BPlusNode::erase_all()
     this->m_key_counter = 0;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::size_type BPlusTree<N, Key, Mapped>::BPlusNode::find_smallest_bigger_key_index(const key_type& key) const
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::BPlusNode::find_smallest_bigger_key_index(const key_type& key) const
 {
     std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
     // binary search, T(n) = O(log n) & S(n) = O(1)
@@ -169,9 +169,9 @@ BPlusTree<N, Key, Mapped>::size_type BPlusTree<N, Key, Mapped>::BPlusNode::find_
     return result;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
+template <OrderedKey Key, Storable Mapped, std::size_t N>
 template <bool is_internal>
-void BPlusTree<N, Key, Mapped>::BPlusNode::handle_underflow(size_type underflow_index)
+void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(size_type underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
     std::size_t neighbour_index = (underflow_index > 0) ? underflow_index - 1 : underflow_index + 1;
@@ -231,9 +231,9 @@ void BPlusTree<N, Key, Mapped>::BPlusNode::handle_underflow(size_type underflow_
 }
 
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
+template <OrderedKey Key, Storable Mapped, std::size_t N>
 template <bool is_internal>
-void BPlusTree<N, Key, Mapped>::merge(BPlusTree::BPlusNode* lower_node, BPlusTree::BPlusNode* higher_node){
+void BPlusTree<Key, Mapped, N>::merge(BPlusTree::BPlusNode* lower_node, BPlusTree::BPlusNode* higher_node){
     for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
         lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
         std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
@@ -249,8 +249,8 @@ void BPlusTree<N, Key, Mapped>::merge(BPlusTree::BPlusNode* lower_node, BPlusTre
     delete higher_node;
 }
 
-template <std::size_t N, OrderedKey Key, Storable Mapped>
-BPlusTree<N, Key, Mapped>::BPlusNode *BPlusTree<N, Key, Mapped>::copy(const BPlusNode *source, const BPlusNode *prev, bool has_min, bool has_max)
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::copy(const BPlusNode *source, const BPlusNode *prev, bool has_min, bool has_max)
 {
     BPlusNode* out = new BPlusNode (source->m_data.index());
     out->m_prev = prev;
