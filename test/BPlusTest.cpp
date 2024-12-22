@@ -10,4 +10,6 @@ void BPlusTest::operator()()
     test_nodes();
     std::cout << "TESTING INSERT, ERASE, AT\n";
     test_crud();
+    std::cout << "TESTING OBSERVERS\n";
+    test_observers();
 }
