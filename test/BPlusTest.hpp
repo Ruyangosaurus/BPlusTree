@@ -18,11 +18,16 @@ class BPlusTest{
     /// @brief Tests the correctness of behaviour of insert, erase, and at.
     void test_crud();
 
+    /// @brief Tests the correctness of behaviour of size and is_empty
+    void test_observers();
+
     /// @brief Auxiliary testing function, prints the name and the output of the function.
     /// @param name The name of the test.
     /// @param func The test itself, returns a c-string.
     static void tester(const char* const name, std::function<const char* const ()> func);
 public:
+    static constexpr int num_inserted = 24;
+    
     /// @brief Runs all the tests
     void operator()();
 };
