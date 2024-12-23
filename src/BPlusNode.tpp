@@ -7,8 +7,8 @@ template <OrderedKey Key, Storable Mapped, std::size_t N>
 BPlusTree<Key, Mapped, N>::BPlusNode::BPlusNode(bool is_leaf)
 {
     m_key_counter = 0;
-    m_next = nullptr;
-    m_prev = nullptr;
+    this->m_next = nullptr;
+    this->m_prev = nullptr;
     m_keys = std::array<Key, N>();
     if (is_leaf){
         m_data = std::array<pointer, N> ();
@@ -33,19 +33,20 @@ BPlusTree<Key, Mapped, N>::pointer BPlusTree<Key, Mapped, N>::BPlusNode::search(
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::insert(key_type&&key, mapped_type&&mapped)
+template<typename ... Args> requires std::constructible_from<Mapped, Args...>
+BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::emplace(BPlusTree& tree, key_type&&key, Args&& ... args)
 {
     std::variant<pointer, BPlusNode*> inserted_ptr;
     Key inserted_key;
     if (m_data.index() == 0){                           // if leaf
         if (search(key) != nullptr) return nullptr;
-        inserted_ptr = new value_type (std::move(mapped));
+        inserted_ptr = new value_type (std::move(args...));
         inserted_key = Key (std::move(key));
     }
     else{                                               // if internal
         std::size_t working_index = this->find_smallest_bigger_key_index(key);
         working_index -= (working_index != 0);
-        inserted_ptr = std::get<1>(this->m_data)[working_index]->insert(std::move(key), std::move(mapped));
+        inserted_ptr = std::get<1>(this->m_data)[working_index]->emplace(tree, std::move(key), std::move(args...));
         this->m_keys[working_index] = std::get<1>(this->m_data)[working_index]->m_keys[0];
         if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
         inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
@@ -57,6 +58,9 @@ BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::inse
         std::size_t mid = (inserted_key < this->m_keys[N/2]) ? N/2 : N - N/2;  // stabilizing the sizes
         inserting_node = (inserted_key < this->m_keys[N/2]) ? this : new_node; // choose the smaller node
         out_ptr = new_node;
+        if (tree.m_max == this){
+            tree.m_max = new_node;
+        }
 
         std::copy_n(this->m_keys.begin() + mid, this->m_key_counter - mid, new_node->m_keys.begin());
         if (this->m_data.index() == 0){
@@ -101,19 +105,19 @@ BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::inse
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(const key_type& key)
+bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(BPlusTree& tree, const key_type& key)
 {
     std::size_t i = this->find_smallest_bigger_key_index(key);
     if (i == 0) return false;
     if (this->m_data.index() != 0){
         --i;
-        auto res = std::get<1>(this->m_data)[i]->erase(key);
+        auto res = std::get<1>(this->m_data)[i]->erase(tree, key);
         if (std::get<1>(this->m_data)[i]->m_key_counter >= N-N/2) return res; // if there's no underflow, return
         if (std::get<1>(this->m_data)[i]->m_data.index() == 0){ // else, fix the situation and then return
-            handle_underflow<false>(i);
+            handle_underflow<false>(tree, i);
         }
         else{
-            handle_underflow<true>(i);
+            handle_underflow<true>(tree, i);
         }
         return res;
     }
@@ -171,7 +175,7 @@ BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::BPlusNode::find_
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
 template <bool is_internal>
-void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(size_type underflow_index)
+void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(BPlusTree& tree, size_type underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
     std::size_t neighbour_index = (underflow_index > 0) ? underflow_index - 1 : underflow_index + 1;
@@ -213,10 +217,16 @@ void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(size_type underflow_
     }
     else{
         // Case 2: merge
-        if (underflow_index > neighbour_index) { 
+        if (underflow_index > neighbour_index) {
+            if (tree.m_max == underflow_subnode) {
+                tree.m_max = neighbour_subnode;
+            }
             merge<is_internal>(neighbour_subnode, underflow_subnode);
         }
         else { 
+            if (tree.m_max == neighbour_subnode) {
+                tree.m_max = underflow_subnode;
+            }
             merge<is_internal>(underflow_subnode, neighbour_subnode);
         }
         std::size_t i = std::max(underflow_index, neighbour_index) + 1;
