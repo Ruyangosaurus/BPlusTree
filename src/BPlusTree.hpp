@@ -40,14 +40,15 @@ private:
 
         /// @brief Inserts a new key and its associated data into the node's subtree.
         /// @param key The key to insert.
-        /// @param data The data associated with the key.
+        /// @param args Arguments used to construct the data associated with the key.
         /// @return A pointer to the newly created node if the node was full and split. Otherwise, returns `nullptr` if the insertion is successful and the node is not full.
-        BPlusNode* insert (key_type&&, mapped_type&&);
+        template<typename ... Args> requires std::constructible_from<Mapped, Args...>
+        BPlusNode* emplace (BPlusTree&, key_type&&, Args&& ...);
 
         /// @brief Deletes the data associated with the given key from the node. 
         /// @param key The key to erase.
         /// @return `true` if the deletion was successful, `false` otherwise.
-        bool erase(const key_type&);
+        bool erase(BPlusTree&, const key_type&);
 
         /// @brief Removes all data if present.
         void erase_all();
@@ -64,7 +65,7 @@ private:
         ///        signal to the parent if necessary.
         /// @param underflow_index The index of the underflowing subnode.
         template<bool is_internal>
-        void handle_underflow(size_type underflow_index);
+        void handle_underflow(BPlusTree&, size_type underflow_index);
     };
 
     /// @brief Gets two adjacent node pointers and merges them into the lower one. Assumes the input nodes are adjacent.
@@ -121,6 +122,13 @@ public:
     void insert (const key_type&, const mapped_type&);
     void insert (key_type&&, mapped_type&&);
 
+    /// @brief Inserts a new key and its associated data into the tree.
+    /// @param key The key to insert.
+    /// @param args Arguments used to construct the data associated with the key.
+    /// @note There can only be one associated value per key.
+    template<typename ... Args> requires std::constructible_from<Mapped, Args...>
+    void emplace (key_type&&, Args&& ...);
+
     /// @brief Erases a key and its associated data from the tree if found.
     /// @param key The key to erase.
     /// @return Whether or not the key was found.
@@ -128,6 +136,13 @@ public:
 
     /// @brief Removes all data if present.
     void erase_all();
+
+    /// @brief Returns the minimal key in the tree
+    /// @exception std::out_of_range if the container is empty. 
+    const key_type& min_key() const;
+    /// @brief Returns the maximal key in the tree
+    /// @exception std::out_of_range if the container is empty. 
+    const key_type& max_key() const;
 
     /// @brief Returns a reference to the mapped value associated with the key.
     /// @param key A key to compare to.
@@ -209,6 +224,24 @@ bool BPlusTree<Key, Mapped, N>::is_empty() const
     return m_size == 0;
 }
 
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+const BPlusTree<Key, Mapped, N>::key_type &BPlusTree<Key, Mapped, N>::min_key() const
+{
+    if (is_empty()){
+        throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
+    }
+    return m_min->m_keys[0];
+}
+
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+const BPlusTree<Key, Mapped, N>::key_type &BPlusTree<Key, Mapped, N>::max_key() const
+{
+    if (is_empty()){
+        throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
+    }
+    return m_max->m_keys[m_max->m_key_counter - 1];
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 //                           BPlusTree CRUD API Block                           //
 //////////////////////////////////////////////////////////////////////////////////
@@ -216,13 +249,20 @@ bool BPlusTree<Key, Mapped, N>::is_empty() const
 template <OrderedKey Key, Storable Mapped, std::size_t N>
 void BPlusTree<Key, Mapped, N>::insert(const key_type& key, const mapped_type& mapped)
 {
-    insert(key_type(key), mapped_type(mapped));
+    emplace(key_type(key), mapped_type(mapped));
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
 void BPlusTree<Key, Mapped, N>::insert(key_type&& key, mapped_type&& mapped)
 {
-    auto new_node = m_root->insert(std::move(key), std::move(mapped));
+    emplace(std::move(key), std::move(mapped));
+}
+
+template <OrderedKey Key, Storable Mapped, std::size_t N> 
+template <typename ... Args> requires std::constructible_from<Mapped, Args...>
+void BPlusTree<Key, Mapped, N>::emplace(key_type && key, Args &&... args) 
+{
+    auto new_node = m_root->emplace(*this, std::move(key), std::move(args...));
     if (new_node){
         BPlusNode* new_root = new BPlusNode (false);
         new_root->m_key_counter = 2;
@@ -236,9 +276,9 @@ void BPlusTree<Key, Mapped, N>::insert(key_type&& key, mapped_type&& mapped)
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-bool BPlusTree<Key, Mapped, N>::erase(const key_type& key)
+bool BPlusTree<Key, Mapped, N>::erase(const key_type &key)
 {
-    bool out = m_root->erase(key);
+    bool out = m_root->erase(*this, key);
     if (m_root->m_key_counter == 1 && m_root->m_data.index() == 1){
         auto temp = std::get<1>(m_root->m_data)[0];
         std::get<1>(m_root->m_data)[0] = nullptr;
