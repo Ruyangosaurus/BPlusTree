@@ -7,7 +7,7 @@ void BPlusTest::test_observers()
         _ASSERT(tree.size() == 0);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
-            _ASSERT(tree.size() == i + 1);
+            _ASSERT(tree.size() == (size_t)(i + 1));
         }
 
         tree.erase_all();
@@ -20,11 +20,11 @@ void BPlusTest::test_observers()
         _ASSERT(tree.size() == 0);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
-            _ASSERT(tree.size() == i + 1);
+            _ASSERT(tree.size() == (size_t)(i + 1));
         }
 
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
-            _ASSERT(tree.size() == BPlusTest::num_inserted - i);
+            _ASSERT(tree.size() == (size_t)(BPlusTest::num_inserted - i));
             tree.erase(i);
         }
         _ASSERT(tree.size() == 0);
@@ -59,4 +59,52 @@ void BPlusTest::test_observers()
         _ASSERT(tree.is_empty() == true);
         return passed;
     });
+
+    tester("5. extreme keys in insertion", [&](){
+        BPlusTree<int,int,3> tree;
+        _ASSERT(tree.is_empty() == true);
+        for (int i = 0; i < BPlusTest::num_inserted; ++i){
+            tree.insert(i,i);
+            try{
+                _ASSERT(tree.min_key() == 0);
+                _ASSERT(tree.max_key() == i);
+            }
+            catch(const std::out_of_range& e){
+                return failed;
+            }
+        }
+
+        tree.erase_all();
+        _ASSERT(tree.is_empty() == true);
+        return passed;
+    });
+
+    tester("6. extreme keys in deletion", [&](){
+        BPlusTree<int,int,3> tree;
+        _ASSERT(tree.is_empty() == true);
+        for (int i = 0; i < BPlusTest::num_inserted; ++i){
+            tree.insert(i,i);
+            try{
+                _ASSERT(tree.min_key() == 0);
+                _ASSERT(tree.max_key() == i);
+            }
+            catch(const std::out_of_range& e){
+                return failed;
+            }
+        }
+
+        for (int i = 0; i < BPlusTest::num_inserted; ++i){
+            try{
+                _ASSERT(tree.min_key() == i);
+                _ASSERT(tree.max_key() == BPlusTest::num_inserted - 1);
+            }
+            catch(const std::out_of_range& e){
+                return failed;
+            }
+            tree.erase(i);
+        }
+        _ASSERT(tree.is_empty() == true);
+        return passed;
+    });
 }
+
