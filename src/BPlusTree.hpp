@@ -7,316 +7,348 @@
 #include <variant>
 #include <string>
 #include <algorithm>
-
-template<OrderedKey Key, Storable Mapped, std::size_t N>
-class BPlusTree{
-public:
-    using key_type = Key;
-    using mapped_type = Mapped;
-    using value_type = mapped_type;
-    using reference = value_type&;
-    using const_reference = const value_type&;
-    using pointer = value_type*;
-    using const_pointer = const value_type*;
-    using size_type = std::size_t;
-
-private:
-    class BPlusNode{
+#include "BPlusNode.hpp"
+#include "DefaultAllocator.hpp"
+namespace csaur{
+    template<OrderedKey Key, 
+             Storable Mapped, 
+             std::size_t N, 
+             SingleElementAllocator ValueAlloc = DefaultAllocator<Mapped>,
+             SingleElementAllocator NodeAlloc = DefaultAllocator<BPlusNode<Key, Mapped, N>>
+            >
+    class BPlusTree{
     public:
-        std::size_t m_key_counter;
-        std::array<key_type, N> m_keys;
-        std::variant<std::array<pointer, N>, std::array<BPlusNode*, N>> m_data; // either Mapped* in leafs or BPlusNode* in internal nodes
-        BPlusNode* m_next, * m_prev;
+        using key_type = Key;
+        using mapped_type = Mapped;
+        using value_type = mapped_type;
+        using reference = value_type&;
+        using const_reference = const value_type&;
+        using pointer = value_type*;
+        using const_pointer = const value_type*;
+        using size_type = std::size_t;
+        using value_allocator = ValueAlloc;
+        using node_type = BPlusNode<Key, Mapped, N>;
+        using node_allocator = NodeAlloc;
+    private:
+
+        /// @brief Gets two adjacent node pointers and merges them into the lower one. Assumes the input nodes are adjacent.
+        /// @param lower_node A pointer to a node
+        /// @param higher_node A pointer to a node
+        template <bool is_internal>
+        void merge(node_type* lower_node, node_type* higher_node);
+
+        /// @brief Allocates a node and copies the contents of another into it.
+        /// @param source A pointer to the node to be copied.
+        /// @return A new allocated node copy.
+        node_type* copy (const node_type* source, const node_type* prev, bool has_min, bool has_max);
+
+        friend node_type;
+        #ifdef DEBUGGING_B_PLUS_TREE
+            friend class ::BPlusTest;
+        #endif
+
+    private:
+        size_type m_size; 
+        node_type* m_root,* m_min,* m_max;
+        NodeAlloc m_node_alloc;
+        value_allocator m_val_alloc;
     public:
+        /// @brief Creates an empty BPlusTree.
+        BPlusTree();
 
-        /// @brief Creates an empty node
-        /// @param is_leaf A flag for creating either a leaf (if true) or an internal node (if false)
-        BPlusNode(bool);
+        /// @brief Copies a BPlusTree.
+        /// @param other Another BPlusTree
+        BPlusTree(const BPlusTree& other);
 
-        /// @brief Searches for the data associated with a given key in the node's subtree.
-        /// @param key The key to search for.
-        /// @return A pointer to the mapped data associated with the key or nullptr if there isn't one.
-        pointer search (const key_type&) const;
+        /// @brief Moves a BPlusTree.
+        /// @param other Another BPlusTree
+        BPlusTree(BPlusTree&& other);
 
-        /// @brief Inserts a new key and its associated data into the node's subtree.
+        /// @brief Destructs a BPlusTree
+        ~BPlusTree();
+
+        /// @brief Copies a BPlusTree.
+        /// @param other Another BPlusTree
+        BPlusTree& operator= (const BPlusTree& other);
+
+        /// @brief Moves a BPlusTree.
+        /// @param other Another BPlusTree
+        BPlusTree& operator= (BPlusTree&& other);
+
+        /// @brief Returns the number of keys and mapped values in the tree.
+        size_type size() const;
+
+        /// @brief Checks if the tree is empty
+        bool is_empty() const;
+
+        /// @brief Inserts a new key and its associated data into the tree.
+        /// @param key The key to insert.
+        /// @param data The data associated with the key.
+        /// @note There can only be one associated value per key.
+        void insert (const key_type&, const mapped_type&);
+        void insert (key_type&&, mapped_type&&);
+
+        /// @brief Inserts a new key and its associated data into the tree.
         /// @param key The key to insert.
         /// @param args Arguments used to construct the data associated with the key.
-        /// @return A pointer to the newly created node if the node was full and split. Otherwise, returns `nullptr` if the insertion is successful and the node is not full.
+        /// @note There can only be one associated value per key.
         template<typename ... Args> requires std::constructible_from<Mapped, Args...>
-        BPlusNode* emplace (BPlusTree&, key_type&&, Args&& ...);
+        void emplace (key_type&&, Args&& ...);
 
-        /// @brief Deletes the data associated with the given key from the node. 
+        /// @brief Erases a key and its associated data from the tree if found.
         /// @param key The key to erase.
-        /// @return `true` if the deletion was successful, `false` otherwise.
-        bool erase(BPlusTree&, const key_type&);
+        /// @return Whether or not the key was found.
+        bool erase (const key_type&);
 
         /// @brief Removes all data if present.
         void erase_all();
 
-        /// @brief Finds the index of the smallest key in the node that is strictly greater than the given key.
-        /// @param key The key to find the smallest bigger key for.
-        /// @return The index of the smallest key larger than the given `key` in the `m_keys` array.
-        /// @note Time Complexity: O(log x), where x is the number of keys currently stored in the node.
-        /// @note Space Complexity: O(1).
-        size_type find_smallest_bigger_key_index(const key_type& key) const;
+        /// @brief Returns the minimal key in the tree
+        /// @exception std::out_of_range if the container is empty. 
+        const key_type& min_key() const;
+        /// @brief Returns the maximal key in the tree
+        /// @exception std::out_of_range if the container is empty. 
+        const key_type& max_key() const;
 
-        /// @brief Handles underflows that occur after deletion in an internal node. This method is responsible for
-        ///        deciding whether to merge nodes or redistribute keys between siblings, and it propagates the underflow
-        ///        signal to the parent if necessary.
-        /// @param underflow_index The index of the underflowing subnode.
-        template<bool is_internal>
-        void handle_underflow(BPlusTree&, size_type underflow_index);
+        /// @brief Returns a reference to the mapped value associated with the key.
+        /// @param key A key to compare to.
+        /// @return A reference to the mapped value associated with the key.
+        /// @exception std::out_of_range if the container does not have an element with the specified key. 
+        mapped_type& at(const key_type& key);
+        const mapped_type& at(const key_type& key) const;
+
+        /// @brief Checks if there is a value mapped to the key in this tree.
+        /// @param key A key to compare to.
+        /// @return Whether there is a value mapped to the key in this tree.
+        bool contains(const key_type& key) const;
     };
 
-    /// @brief Gets two adjacent node pointers and merges them into the lower one. Assumes the input nodes are adjacent.
-    /// @param lower_node A pointer to a node
-    /// @param higher_node A pointer to a node
+    //////////////////////////////////////////////////////////////////////////////////
+    //                      BPlusTree CTOR, DTOR, & =TOR Block                      //
+    //////////////////////////////////////////////////////////////////////////////////
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::BPlusTree()
+    {
+        m_size = 0;
+        m_root = std::construct_at(m_node_alloc.allocate(), true);
+        m_min = m_root;
+        m_max = m_root;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::BPlusTree(const BPlusTree &other)
+    {
+        m_size = other.m_size;
+        m_root = copy(other.m_root, nullptr, true, true);
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::BPlusTree(BPlusTree &&other)
+    {
+        m_size = other.m_size;
+        m_root = other.m_root;
+        m_min = other.m_min;
+        m_max = other.m_max;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::~BPlusTree()
+    {
+        m_root->erase_all(*this);
+        std::destroy_at(m_root);
+        m_node_alloc.deallocate(m_root);
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>& BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::operator=(const BPlusTree &other)
+    {
+        m_root->erase_all(*this);
+        std::destroy_at(m_root);
+        m_node_alloc.deallocate(m_root);
+        m_size = other.m_size;
+        m_root = copy(other.m_root, nullptr, true, true);
+        return *this;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>& BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::operator=(BPlusTree &&other)
+    {
+        m_root->erase_all(*this);
+        std::destroy_at(m_root);
+        m_node_alloc.deallocate(m_root);
+        m_size = other.m_size;
+        m_root = other.m_root;
+        m_min = other.m_min;
+        m_max = other.m_max;
+        return *this;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::size_type BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::size() const
+    {
+        return m_size;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    bool BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::is_empty() const
+    {
+        return m_size == 0;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    const BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::key_type &BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::min_key() const
+    {
+        if (is_empty()){
+            throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
+        }
+        return m_min->m_keys[0];
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    const BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::key_type &BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::max_key() const
+    {
+        if (is_empty()){
+            throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
+        }
+        return m_max->m_keys[m_max->m_key_counter - 1];
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    //                           BPlusTree CRUD API Block                           //
+    //////////////////////////////////////////////////////////////////////////////////
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::insert(const key_type& key, const mapped_type& mapped)
+    {
+        emplace(key_type(key), mapped_type(mapped));
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::insert(key_type&& key, mapped_type&& mapped)
+    {
+        emplace(std::move(key), std::move(mapped));
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc> 
+    template <typename ... Args> requires std::constructible_from<Mapped, Args...>
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::emplace(key_type && key, Args &&... args) 
+    {
+        auto new_node = m_root->emplace(*this, std::move(key), std::move(args...));
+        if (new_node){
+            node_type* new_root = std::construct_at(m_node_alloc.allocate(), false);
+            new_root->m_key_counter = 2;
+            new_root->m_keys[0] = m_root->m_keys[0];
+            new_root->m_keys[1] = new_node->m_keys[0];
+            std::get<1>(new_root->m_data)[0] = m_root;
+            std::get<1>(new_root->m_data)[1] = new_node;
+            m_root = new_root;
+        }
+        ++m_size;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    bool BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::erase(const key_type &key)
+    {
+        bool out = m_root->erase(*this, key);
+        if (m_root->m_key_counter == 1 && m_root->m_data.index() == 1){
+            auto temp = std::get<1>(m_root->m_data)[0];
+            std::get<1>(m_root->m_data)[0] = nullptr;
+            std::destroy_at(m_root);
+            m_node_alloc.deallocate(m_root);
+            m_root = temp;
+        }
+        --m_size;
+        return out;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::erase_all()
+    {
+        m_root->erase_all(*this);
+        m_size = 0;
+        m_root->m_data = std::array<pointer, N> ();
+        m_min = m_root;
+        m_max = m_root;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::mapped_type& BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::at(const key_type &key)
+    {
+        pointer search_result = m_root->search(key);
+        if (search_result){
+            return *search_result;
+        }
+        throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    const BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::mapped_type& BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::at(const key_type &key) const
+    {
+        pointer search_result = m_root->search(key);
+        if (search_result){
+            return *search_result;
+        }
+        throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    bool BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::contains(const key_type &key) const
+    {
+        return nullptr != m_root->search(key);
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
     template <bool is_internal>
-    static void merge(BPlusNode* lower_node, BPlusNode* higher_node);
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::merge(typename BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::node_type* lower_node, typename BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::node_type* higher_node){
+        for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
+            lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
+            std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
+        }
 
-    /// @brief Allocates a node and copies the contents of another into it.
-    /// @param source A pointer to the node to be copied.
-    /// @return A new allocated node copy.
-    BPlusNode* copy (const BPlusNode* source, const BPlusNode* prev, bool has_min, bool has_max);
+        lower_node->m_key_counter += higher_node->m_key_counter;
 
-    #ifdef DEBUGGING_B_PLUS_TREE
-        friend class BPlusTest;
-    #endif
+        if (higher_node->m_next){
+            higher_node->m_next->m_prev = lower_node;
+        }
+        lower_node->m_next = higher_node->m_next;
 
-private:
-    size_type m_size; 
-    BPlusNode* m_root,* m_min,* m_max;
-public:
-    /// @brief Creates an empty BPlusTree.
-    BPlusTree();
+        std::destroy_at(higher_node);
+        m_node_alloc.deallocate(higher_node);
+    }
 
-    /// @brief Copies a BPlusTree.
-    /// @param other Another BPlusTree
-    BPlusTree(const BPlusTree& other);
-
-    /// @brief Moves a BPlusTree.
-    /// @param other Another BPlusTree
-    BPlusTree(BPlusTree&& other);
-
-    /// @brief Destructs a BPlusTree
-    ~BPlusTree();
-
-    /// @brief Copies a BPlusTree.
-    /// @param other Another BPlusTree
-    BPlusTree& operator= (const BPlusTree& other);
-
-    /// @brief Moves a BPlusTree.
-    /// @param other Another BPlusTree
-    BPlusTree& operator= (BPlusTree&& other);
-
-    /// @brief Returns the number of keys and mapped values in the tree.
-    size_type size() const;
-
-    /// @brief Checks if the tree is empty
-    bool is_empty() const;
-
-    /// @brief Inserts a new key and its associated data into the tree.
-    /// @param key The key to insert.
-    /// @param data The data associated with the key.
-    /// @note There can only be one associated value per key.
-    void insert (const key_type&, const mapped_type&);
-    void insert (key_type&&, mapped_type&&);
-
-    /// @brief Inserts a new key and its associated data into the tree.
-    /// @param key The key to insert.
-    /// @param args Arguments used to construct the data associated with the key.
-    /// @note There can only be one associated value per key.
-    template<typename ... Args> requires std::constructible_from<Mapped, Args...>
-    void emplace (key_type&&, Args&& ...);
-
-    /// @brief Erases a key and its associated data from the tree if found.
-    /// @param key The key to erase.
-    /// @return Whether or not the key was found.
-    bool erase (const key_type&);
-
-    /// @brief Removes all data if present.
-    void erase_all();
-
-    /// @brief Returns the minimal key in the tree
-    /// @exception std::out_of_range if the container is empty. 
-    const key_type& min_key() const;
-    /// @brief Returns the maximal key in the tree
-    /// @exception std::out_of_range if the container is empty. 
-    const key_type& max_key() const;
-
-    /// @brief Returns a reference to the mapped value associated with the key.
-    /// @param key A key to compare to.
-    /// @return A reference to the mapped value associated with the key.
-    /// @exception std::out_of_range if the container does not have an element with the specified key. 
-    mapped_type& at(const key_type& key);
-    const mapped_type& at(const key_type& key) const;
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
+    typename BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::node_type *BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::copy(const typename BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::node_type *source, const typename BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::node_type *prev, bool has_min, bool has_max)
+    {
+        node_type* out = std::construct_at(m_node_alloc.allocate(), source->m_data.index());
+        out->m_prev = prev;
+        if (prev){
+            prev->m_next = out;
+        }
+        out->m_key_counter = source->m_key_counter;
+        for (size_type i = 0; i < out->m_key_counter; ++i){
+            out->m_keys[i] = source->m_keys[i];
+        }
+        if (source->m_data.index() == 0){
+            for (size_type i = 0; i < out->m_key_counter; ++i){
+                std::get<0>(out->m_data)[i] = new value_type (std::get<0>(source->m_data)[i]);
+            }
+            if (has_min){
+                m_min = out;
+            }
+            if (has_max){
+                m_max = out;
+            }
+        }
+        else{
+            size_type i = 0;
+            std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], nullptr, has_min, false);
+            for (++i; i < out->m_key_counter - 1; ++i){
+                std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, false);
+            }
+            std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, has_max);
+        }
+        return out;
+    }
 };
-
-#include "BPlusNode.tpp"
-
-//////////////////////////////////////////////////////////////////////////////////
-//                      BPlusTree CTOR, DTOR, & =TOR Block                      //
-//////////////////////////////////////////////////////////////////////////////////
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusTree()
-{
-    m_size = 0;
-    m_root = new BPlusNode(true);
-    m_min = m_root;
-    m_max = m_root;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusTree(const BPlusTree &other)
-{
-    m_size = other.m_size;
-    m_root = copy(other.m_root, nullptr, true, true);
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusTree(BPlusTree &&other)
-{
-    m_size = other.m_size;
-    m_root = other.m_root;
-    m_min = other.m_min;
-    m_max = other.m_max;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::~BPlusTree()
-{
-    m_root->erase_all();
-    delete m_root;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>& BPlusTree<Key, Mapped, N>::operator=(const BPlusTree &other)
-{
-    m_root->erase_all();
-    delete m_root;
-    m_size = other.m_size;
-    m_root = copy(other.m_root, nullptr, true, true);
-    return *this;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>& BPlusTree<Key, Mapped, N>::operator=(BPlusTree &&other)
-{
-    m_root->erase_all();
-    delete m_root;
-    m_size = other.m_size;
-    m_root = other.m_root;
-    m_min = other.m_min;
-    m_max = other.m_max;
-    return *this;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::size() const
-{
-    return m_size;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-bool BPlusTree<Key, Mapped, N>::is_empty() const
-{
-    return m_size == 0;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-const BPlusTree<Key, Mapped, N>::key_type &BPlusTree<Key, Mapped, N>::min_key() const
-{
-    if (is_empty()){
-        throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
-    }
-    return m_min->m_keys[0];
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-const BPlusTree<Key, Mapped, N>::key_type &BPlusTree<Key, Mapped, N>::max_key() const
-{
-    if (is_empty()){
-        throw std::out_of_range("BPlusTree::min_key: An empty tree has no minimal key.\n");
-    }
-    return m_max->m_keys[m_max->m_key_counter - 1];
-}
-
-//////////////////////////////////////////////////////////////////////////////////
-//                           BPlusTree CRUD API Block                           //
-//////////////////////////////////////////////////////////////////////////////////
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-void BPlusTree<Key, Mapped, N>::insert(const key_type& key, const mapped_type& mapped)
-{
-    emplace(key_type(key), mapped_type(mapped));
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-void BPlusTree<Key, Mapped, N>::insert(key_type&& key, mapped_type&& mapped)
-{
-    emplace(std::move(key), std::move(mapped));
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N> 
-template <typename ... Args> requires std::constructible_from<Mapped, Args...>
-void BPlusTree<Key, Mapped, N>::emplace(key_type && key, Args &&... args) 
-{
-    auto new_node = m_root->emplace(*this, std::move(key), std::move(args...));
-    if (new_node){
-        BPlusNode* new_root = new BPlusNode (false);
-        new_root->m_key_counter = 2;
-        new_root->m_keys[0] = m_root->m_keys[0];
-        new_root->m_keys[1] = new_node->m_keys[0];
-        std::get<1>(new_root->m_data)[0] = m_root;
-        std::get<1>(new_root->m_data)[1] = new_node;
-        m_root = new_root;
-    }
-    ++m_size;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-bool BPlusTree<Key, Mapped, N>::erase(const key_type &key)
-{
-    bool out = m_root->erase(*this, key);
-    if (m_root->m_key_counter == 1 && m_root->m_data.index() == 1){
-        auto temp = std::get<1>(m_root->m_data)[0];
-        std::get<1>(m_root->m_data)[0] = nullptr;
-        delete m_root;
-        m_root = temp;
-    }
-    --m_size;
-    return out;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-void BPlusTree<Key, Mapped, N>::erase_all()
-{
-    m_root->erase_all();
-    m_size = 0;
-    m_root->m_data = std::array<pointer, N> ();
-    m_min = m_root;
-    m_max = m_root;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::mapped_type& BPlusTree<Key, Mapped, N>::at(const key_type &key)
-{
-    pointer search_result = m_root->search(key);
-    if (search_result){
-        return *search_result;
-    }
-    throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-const BPlusTree<Key, Mapped, N>::mapped_type& BPlusTree<Key, Mapped, N>::at(const key_type &key) const
-{
-    pointer search_result = m_root->search(key);
-    if (search_result){
-        return *search_result;
-    }
-    throw std::out_of_range("BPlusTree::at: No value associated with the key was found.\n");
-}
-
 #endif
