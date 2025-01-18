@@ -4,7 +4,7 @@
 //                        BPlusNode Implementation Block                        //
 //////////////////////////////////////////////////////////////////////////////////
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusNode::BPlusNode(bool is_leaf)
+BPlusNode<Key, Mapped, N>::BPlusNode(bool is_leaf)
 {
     m_key_counter = 0;
     this->m_next = nullptr;
@@ -19,7 +19,7 @@ BPlusTree<Key, Mapped, N>::BPlusNode::BPlusNode(bool is_leaf)
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::pointer BPlusTree<Key, Mapped, N>::BPlusNode::search(const key_type& key) const
+BPlusNode<Key, Mapped, N>::pointer BPlusNode<Key, Mapped, N>::search(const key_type& key) const
 {
     auto index = find_smallest_bigger_key_index(key);
     if (index == 0) return nullptr;
@@ -33,14 +33,14 @@ BPlusTree<Key, Mapped, N>::pointer BPlusTree<Key, Mapped, N>::BPlusNode::search(
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-template<typename ... Args> requires std::constructible_from<Mapped, Args...>
-BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::emplace(BPlusTree& tree, key_type&&key, Args&& ... args)
+template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, typename ... Args> requires std::constructible_from<Mapped, Args...>
+BPlusNode<Key, Mapped, N> *BPlusNode<Key, Mapped, N>::emplace(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree, key_type&&key, Args&& ... args)
 {
     std::variant<pointer, BPlusNode*> inserted_ptr;
     Key inserted_key;
     if (m_data.index() == 0){                           // if leaf
         if (search(key) != nullptr) return nullptr;
-        inserted_ptr = new value_type (std::move(args...));
+        inserted_ptr = std::construct_at(tree.m_val_alloc.allocate(), std::move(args...));
         inserted_key = Key (std::move(key));
     }
     else{                                               // if internal
@@ -54,7 +54,7 @@ BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::empl
 
     BPlusNode* inserting_node = this, * out_ptr = nullptr;
     if (this->m_key_counter == N){ // split
-        auto new_node = new BPlusNode(this->m_data.index() == 0);              // index == 0 <-> this is a leaf
+        auto new_node = std::construct_at(tree.m_node_alloc.allocate(), this->m_data.index() == 0);              // index == 0 <-> this is a leaf
         std::size_t mid = (inserted_key < this->m_keys[N/2]) ? N/2 : N - N/2;  // stabilizing the sizes
         inserting_node = (inserted_key < this->m_keys[N/2]) ? this : new_node; // choose the smaller node
         out_ptr = new_node;
@@ -105,7 +105,8 @@ BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::BPlusNode::empl
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(BPlusTree& tree, const key_type& key)
+template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc>
+bool BPlusNode<Key, Mapped, N>::erase(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree, const key_type& key)
 {
     std::size_t i = this->find_smallest_bigger_key_index(key);
     if (i == 0) return false;
@@ -114,17 +115,18 @@ bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(BPlusTree& tree, const key_type
         auto res = std::get<1>(this->m_data)[i]->erase(tree, key);
         if (std::get<1>(this->m_data)[i]->m_key_counter >= N-N/2) return res; // if there's no underflow, return
         if (std::get<1>(this->m_data)[i]->m_data.index() == 0){ // else, fix the situation and then return
-            handle_underflow<false>(tree, i);
+            handle_underflow<ValAlloc, NodeAlloc, false>(tree, i);
         }
         else{
-            handle_underflow<true>(tree, i);
+            handle_underflow<ValAlloc, NodeAlloc, true>(tree, i);
         }
         return res;
     }
     if (this->m_keys[i - 1] != key)
         return false;
 
-    delete std::get<0>(this->m_data)[i-1];
+    std::destroy_at(std::get<0>(this->m_data)[i-1]);
+    tree.m_val_alloc.deallocate(std::get<0>(this->m_data)[i-1]);
     
     std::copy_n(std::get<0>(this->m_data).begin() + i,      // move everything left
                 this->m_key_counter - i, 
@@ -138,24 +140,27 @@ bool BPlusTree<Key, Mapped, N>::BPlusNode::erase(BPlusTree& tree, const key_type
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-void BPlusTree<Key, Mapped, N>::BPlusNode::erase_all()
+template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc>
+void BPlusNode<Key, Mapped, N>::erase_all(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree)
 {
     if (this->m_data.index() == 0){
         for (std::size_t i = 0; i < this->m_key_counter; ++i){
-            delete std::get<0>(this->m_data)[i];
+            std::destroy_at(std::get<0>(this->m_data)[i]);
+            tree.m_val_alloc.deallocate(std::get<0>(this->m_data)[i]);
         }
     }
     else{
         for (std::size_t i = 0; i < this->m_key_counter; ++i){
-            std::get<1>(this->m_data)[i]->erase_all();
-            delete std::get<1>(this->m_data)[i];
+            std::get<1>(this->m_data)[i]->erase_all(tree);
+            std::destroy_at(std::get<1>(this->m_data)[i]);
+            tree.m_node_alloc.deallocate(std::get<1>(this->m_data)[i]);
         }
     }
     this->m_key_counter = 0;
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::BPlusNode::find_smallest_bigger_key_index(const key_type& key) const
+BPlusNode<Key, Mapped, N>::size_type BPlusNode<Key, Mapped, N>::find_smallest_bigger_key_index(const key_type& key) const
 {
     std::size_t left = 0, right = (m_key_counter != 0) ? m_key_counter - 1 : 0, result = m_key_counter;
     // binary search, T(n) = O(log n) & S(n) = O(1)
@@ -174,8 +179,8 @@ BPlusTree<Key, Mapped, N>::size_type BPlusTree<Key, Mapped, N>::BPlusNode::find_
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-template <bool is_internal>
-void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(BPlusTree& tree, size_type underflow_index)
+template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, bool is_internal>
+void BPlusNode<Key, Mapped, N>::handle_underflow(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree, size_type underflow_index)
 {
     // assumes having at least two sons, for the case for less would have already been dealt with
     std::size_t neighbour_index = (underflow_index > 0) ? underflow_index - 1 : underflow_index + 1;
@@ -221,13 +226,13 @@ void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(BPlusTree& tree, siz
             if (tree.m_max == underflow_subnode) {
                 tree.m_max = neighbour_subnode;
             }
-            merge<is_internal>(neighbour_subnode, underflow_subnode);
+            tree.template merge<is_internal>(neighbour_subnode, underflow_subnode);
         }
         else { 
             if (tree.m_max == neighbour_subnode) {
                 tree.m_max = underflow_subnode;
             }
-            merge<is_internal>(underflow_subnode, neighbour_subnode);
+            tree.template merge<is_internal>(underflow_subnode, neighbour_subnode);
         }
         std::size_t i = std::max(underflow_index, neighbour_index) + 1;
         std::copy_n(std::get<1>(this->m_data).begin() + i,      // move everything left
@@ -238,57 +243,4 @@ void BPlusTree<Key, Mapped, N>::BPlusNode::handle_underflow(BPlusTree& tree, siz
                     this->m_keys.begin() + i - 1);
         this->m_key_counter--;
     }
-}
-
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-template <bool is_internal>
-void BPlusTree<Key, Mapped, N>::merge(BPlusTree::BPlusNode* lower_node, BPlusTree::BPlusNode* higher_node){
-    for (std::size_t i = 0; i < higher_node->m_key_counter; ++i) {
-        lower_node->m_keys[lower_node->m_key_counter + i] = higher_node->m_keys[i];
-        std::get<is_internal>(lower_node->m_data)[lower_node->m_key_counter + i] = std::get<is_internal>(higher_node->m_data)[i];
-    }
-
-    lower_node->m_key_counter += higher_node->m_key_counter;
-
-    if (higher_node->m_next){
-        higher_node->m_next->m_prev = lower_node;
-    }
-    lower_node->m_next = higher_node->m_next;
-
-    delete higher_node;
-}
-
-template <OrderedKey Key, Storable Mapped, std::size_t N>
-BPlusTree<Key, Mapped, N>::BPlusNode *BPlusTree<Key, Mapped, N>::copy(const BPlusNode *source, const BPlusNode *prev, bool has_min, bool has_max)
-{
-    BPlusNode* out = new BPlusNode (source->m_data.index());
-    out->m_prev = prev;
-    if (prev){
-        prev->m_next = out;
-    }
-    out->m_key_counter = source->m_key_counter;
-    for (size_type i = 0; i < out->m_key_counter; ++i){
-        out->m_keys[i] = source->m_keys[i];
-    }
-    if (source->m_data.index() == 0){
-        for (size_type i = 0; i < out->m_key_counter; ++i){
-            std::get<0>(out->m_data)[i] = new value_type (std::get<0>(source->m_data)[i]);
-        }
-        if (has_min){
-            m_min = out;
-        }
-        if (has_max){
-            m_max = out;
-        }
-    }
-    else{
-        size_type i = 0;
-        std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], nullptr, has_min, false);
-        for (++i; i < out->m_key_counter - 1; ++i){
-            std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, false);
-        }
-        std::get<1>(out->m_data)[i] = copy (std::get<1>(source->m_data)[i], std::get<1>(out->m_data)[i - 1], false, has_max);
-    }
-    return out;
 }
