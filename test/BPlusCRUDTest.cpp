@@ -2,7 +2,7 @@
 #include <random>
 
 const char* crd_tester_aux (std::function<int (int)>lambda){
-    BPlusTree<int,int,3> tree;
+    csaur::BPlusTree<int,int,3> tree;
     for (int i = 0; i < BPlusTest::num_inserted; ++i){
         tree.insert(lambda(i),lambda(i));
         for (int j = 0; j <= i; ++j){
@@ -52,7 +52,7 @@ void BPlusTest::test_crud(){
     auto rm =std::default_random_engine(std::random_device{}());
     tester("5. random permutation", [&](){
         std::ranges::shuffle(array.begin(), array.end(),rm);
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(array[i],array[i]);
             for (int j = 0; j <= i; ++j){
@@ -89,7 +89,7 @@ void BPlusTest::test_crud(){
 
     tester("6. twice", [&](){
         std::ranges::shuffle(array.begin(), array.end(),rm);
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(array[i],array[i]);
             for (int j = 0; j <= i; ++j){
@@ -160,7 +160,7 @@ void BPlusTest::test_crud(){
 
     tester("7. update", [&](){
         std::ranges::shuffle(array.begin(), array.end(),rm);
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(array[i],array[i]);
             for (int j = 0; j <= i; ++j){
@@ -216,7 +216,7 @@ void BPlusTest::test_crud(){
 
     tester("8. erase all", [&](){
         std::ranges::shuffle(array.begin(), array.end(),rm);
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(array[i],array[i]);
             for (int j = 0; j <= i; ++j){
@@ -250,7 +250,7 @@ void BPlusTest::test_crud(){
 
     tester("9. emplace", [&](){
         std::ranges::shuffle(array.begin(), array.end(),rm);
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.emplace<int>(int(array[i]),int(array[i]));
             for (int j = 0; j <= i; ++j){
