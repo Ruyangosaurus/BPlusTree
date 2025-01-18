@@ -22,4 +22,17 @@ concept Storable = std::move_constructible<T> && std::copy_constructible<T> && s
 template<typename Key>
 concept OrderedKey = Storable<Key> && std::totally_ordered<Key>;
 
+template<class Allocator>
+concept has_allocate = requires (Allocator a){
+    {a.allocate()} -> std::same_as<typename Allocator::pointer>;
+};
+
+template<class Allocator>
+concept has_deallocate = requires (Allocator a, typename Allocator::pointer p){
+    {a.deallocate(p)};
+};
+
+template<typename Alloc>
+concept SingleElementAllocator = has_deallocate<Alloc> && has_allocate<Alloc>;
+
 #endif
