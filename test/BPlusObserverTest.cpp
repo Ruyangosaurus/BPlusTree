@@ -1,9 +1,33 @@
 #include "BPlusTest.hpp"
 
+const char* contains_tester_aux (std::function<int (int)>lambda){
+    csaur::BPlusTree<int,int,3> tree;
+    for (int i = 0; i < BPlusTest::num_inserted; ++i){
+        tree.insert(lambda(i),lambda(i));
+        for (int j = 0; j <= i; ++j){
+            _ASSERT(tree.contains(lambda(j)));
+        }
+        for (int j = i + 1;j < BPlusTest::num_inserted;++j){
+            _ASSERT(!tree.contains(lambda(j)));
+        }
+    }
+
+    for (int i = 0; i < BPlusTest::num_inserted; ++i){
+        tree.erase(lambda(i));
+        for (int j = 0 ;j < i+1;++j){
+            _ASSERT(!tree.contains(lambda(j)));
+        }
+        for (int j = i + 1; j < BPlusTest::num_inserted; ++j){
+            _ASSERT(tree.contains(lambda(j)));
+        }
+    }
+    return passed;
+};
+
 void BPlusTest::test_observers()
 {
     tester("1. size in insertion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.size() == 0);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -16,7 +40,7 @@ void BPlusTest::test_observers()
     });
 
     tester("2. size in deletion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.size() == 0);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -32,7 +56,7 @@ void BPlusTest::test_observers()
     });
 
     tester("3. is_empty in insertion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.is_empty() == true);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -45,7 +69,7 @@ void BPlusTest::test_observers()
     });
 
     tester("4. is_empty in deletion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.is_empty() == true);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -61,7 +85,7 @@ void BPlusTest::test_observers()
     });
 
     tester("5. extreme keys in insertion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.is_empty() == true);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -80,7 +104,7 @@ void BPlusTest::test_observers()
     });
 
     tester("6. extreme keys in deletion", [&](){
-        BPlusTree<int,int,3> tree;
+        csaur::BPlusTree<int,int,3> tree;
         _ASSERT(tree.is_empty() == true);
         for (int i = 0; i < BPlusTest::num_inserted; ++i){
             tree.insert(i,i);
@@ -106,5 +130,13 @@ void BPlusTest::test_observers()
         _ASSERT(tree.is_empty() == true);
         return passed;
     });
+
+    tester("7. contains rising order", []{return contains_tester_aux([](int x){return x;});});
+
+    tester("8. contains falling order", []{return contains_tester_aux([](int x){return BPlusTest::num_inserted - 1 - x;});});
+
+    tester("9. contains zigzag", []{return contains_tester_aux([](int x){return (x%2)?x/2:BPlusTest::num_inserted - 1 - x/2;
+                                                            });});
+    tester("10. contains steps of seven",[]{return contains_tester_aux([](int x){return (x*7)%BPlusTest::num_inserted;});}); // 7 and BPlusTest::num_inserted are coprime
 }
 
