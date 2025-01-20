@@ -86,14 +86,23 @@ namespace csaur{
         /// @param data The data associated with the key.
         /// @note There can only be one associated value per key.
         void insert (const key_type&, const mapped_type&);
-        void insert (key_type&&, mapped_type&&);
+        void insert (key_type&&, mapped_type&&) noexcept;
 
         /// @brief Inserts a new key and its associated data into the tree.
         /// @param key The key to insert.
         /// @param args Arguments used to construct the data associated with the key.
         /// @note There can only be one associated value per key.
+        /// @note At failure, does not change contents.
         template<typename ... Args> requires std::constructible_from<Mapped, Args...>
-        void emplace (key_type&&, Args&& ...);
+        void emplace (key_type&&, Args&& ...) noexcept;
+
+        /// @brief Inserts a new key and its associated data into the tree.
+        /// @param key The key to insert.
+        /// @param args Arguments used to construct the data associated with the key.
+        /// @note Replaces value if key exists.
+        /// @note At failure, does not change contents.
+        template<typename ... Args> requires std::constructible_from<Mapped, Args...>
+        void try_emplace (key_type&&, Args&& ...) noexcept;
 
         /// @brief Erases a key and its associated data from the tree if found.
         /// @param key The key to erase.
@@ -221,27 +230,84 @@ namespace csaur{
     template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
     void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::insert(const key_type& key, const mapped_type& mapped)
     {
-        emplace(key_type(key), mapped_type(mapped));
+        emplace(key_type(key), key_type(mapped));
     }
 
     template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc>
-    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::insert(key_type&& key, mapped_type&& mapped)
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::insert(key_type&& key, mapped_type&& mapped) noexcept
     {
         emplace(std::move(key), std::move(mapped));
     }
 
     template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc> 
     template <typename ... Args> requires std::constructible_from<Mapped, Args...>
-    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::emplace(key_type && key, Args &&... args) 
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::emplace(key_type && key, Args &&... args) noexcept
     {
-        auto new_node = m_root->emplace(*this, std::move(key), std::move(args...));
-        if (new_node){
-            node_type* new_root = std::construct_at(m_node_alloc.allocate(), false);
+        std::variant<pointer, node_type*> new_node = m_root->template emplace<ValueAlloc, NodeAlloc, false, Args...>(*this, std::move(key), std::move(args...));
+        if (std::get<1>(new_node)){
+            node_type* new_root;
+            try{
+                new_root = std::construct_at(m_node_alloc.allocate(), false);
+            }
+            catch(std::bad_alloc& e){
+                while(new_node.index() != 0){
+                    auto temp = std::get<1>(new_node);
+                    if (temp->m_data.index() == 0){
+                        new_node = std::get<1>(temp->m_data)[0];
+                    }
+                    else{
+                        new_node = std::get<0>(temp->m_data)[0];
+                    }
+                    std::destroy_at(temp);
+                    m_node_alloc.deallocate(temp);
+                }
+                std::destroy_at(std::get<0>(new_node));
+                m_val_alloc.deallocate(std::get<0>(new_node));
+                return;
+            }
+            node_type::restabilize(m_root, std::get<1>(new_node));
             new_root->m_key_counter = 2;
             new_root->m_keys[0] = m_root->m_keys[0];
-            new_root->m_keys[1] = new_node->m_keys[0];
+            new_root->m_keys[1] = std::get<1>(new_node)->m_keys[0];
             std::get<1>(new_root->m_data)[0] = m_root;
-            std::get<1>(new_root->m_data)[1] = new_node;
+            std::get<1>(new_root->m_data)[1] = std::get<1>(new_node);
+            m_root = new_root;
+        }
+        ++m_size;
+    }
+
+    template <OrderedKey Key, Storable Mapped, std::size_t N, SingleElementAllocator ValueAlloc, SingleElementAllocator NodeAlloc> 
+    template <typename ... Args> requires std::constructible_from<Mapped, Args...>
+    void BPlusTree<Key, Mapped, N, ValueAlloc, NodeAlloc>::try_emplace(key_type && key, Args &&... args) noexcept
+    {
+        std::variant<pointer, node_type*> new_node = m_root->template emplace<ValueAlloc, NodeAlloc, true, Args...>(*this, std::move(key), std::move(args...));
+        if (std::get<1>(new_node)){
+            node_type* new_root;
+            try{
+                new_root = std::construct_at(m_node_alloc.allocate(), false);
+            }
+            catch(std::bad_alloc& e){
+                while(new_node.index() != 0){
+                    auto temp = std::get<1>(new_node);
+                    if (temp->m_data.index() == 0){
+                        new_node = std::get<1>(temp->m_data)[0];
+                    }
+                    else{
+                        new_node = std::get<0>(temp->m_data)[0];
+                    }
+                    std::destroy_at(temp);
+                    m_node_alloc.deallocate(temp);
+                }
+                std::destroy_at(std::get<0>(new_node));
+                m_val_alloc.deallocate(std::get<0>(new_node));
+                return;
+            }
+            node_type::restabilize(m_root, std::get<1>(new_node));
+            new_root->m_key_counter = 2;
+            new_root->m_keys[0] = m_root->m_keys[0];
+            new_root->m_keys[1] = std::get<1>(new_node)->m_keys[0];
+            std::get<1>(new_root->m_data)[0] = m_root;
+            std::get<1>(new_root->m_data)[1] = std::get<1>(new_node);
             m_root = new_root;
         }
         ++m_size;
