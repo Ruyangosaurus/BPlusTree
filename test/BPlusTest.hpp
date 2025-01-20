@@ -1,6 +1,9 @@
 #ifndef TESTING_HEADER_DEFINED
 #define TESTING_HEADER_DEFINED
 #define DEBUGGING_B_PLUS_TREE
+
+class BPlusTest;
+
 #include "../src/BPlusTree.hpp"
 #include <cassert>
 #include <iostream>
