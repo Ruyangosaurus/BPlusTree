@@ -545,7 +545,8 @@ void BPlusTest::test_nodes(){
         even_leaf_1.erase_all(tree4);
         even_leaf_2.erase_all(tree4);
         std::get<1>(even_node.m_data)[1]->erase_all(tree4);
-        delete std::get<1>(even_node.m_data)[1];
+        std::destroy_at(std::get<1>(even_node.m_data)[1]);
+        tree4.m_node_alloc.deallocate(std::get<1>(even_node.m_data)[1]);
 
         typename csaur::BPlusTree<int,int,5>::node_type odd_leaf_1 (true);
         odd_leaf_1.emplace(tree5,0,0);
@@ -587,7 +588,8 @@ void BPlusTest::test_nodes(){
         odd_leaf_1.erase_all(tree5);
         odd_leaf_2.erase_all(tree5);
         std::get<1>(odd_node.m_data)[1]->erase_all(tree5);
-        delete std::get<1>(odd_node.m_data)[1];
+        std::destroy_at(std::get<1>(odd_node.m_data)[1]);
+        tree5.m_node_alloc.deallocate(std::get<1>(odd_node.m_data)[1]);
         return passed;
     });
 
