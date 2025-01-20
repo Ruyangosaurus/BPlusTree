@@ -270,4 +270,60 @@ void BPlusTest::test_crud(){
         tree.erase_all();
         return passed;
     });
+
+    tester("10. value bad_alloc", [&](){
+        csaur::BPlusTree<int,int,3, FourMaxAllocator<int>> tree;
+        tree.insert(0,0);
+        tree.insert(1,1);
+        tree.insert(2,2);
+        tree.insert(3,3);
+        tree.insert(4,4);
+
+        _ASSERT(tree.contains(0));
+        _ASSERT(tree.contains(1));
+        _ASSERT(tree.contains(2));
+        _ASSERT(tree.contains(3));
+        _ASSERT(!tree.contains(4));
+
+        tree.erase_all();
+        return passed;
+    });
+
+    tester("11. node bad_alloc", [&](){
+        csaur::BPlusTree<int,int,3, csaur::DefaultAllocator<int>, FourMaxAllocator<csaur::BPlusNode<int,int,3>>> tree;
+        tree.insert(0,0);
+        tree.insert(1,1);
+        tree.insert(2,2);
+        tree.insert(3,3);
+        tree.insert(4,4);
+        tree.insert(5,5);
+        tree.insert(6,6);
+        tree.insert(7,7);
+
+        _ASSERT(tree.contains(0));
+        _ASSERT(tree.contains(1));
+        _ASSERT(tree.contains(2));
+        _ASSERT(tree.contains(3));
+        _ASSERT(tree.contains(4));
+        _ASSERT(tree.contains(5));
+        _ASSERT(tree.contains(6));
+        _ASSERT(!tree.contains(7));
+
+        tree.erase_all();
+        return passed;
+    });
+
+    tester("12. double insertions", [&](){
+        csaur::BPlusTree<int,int,3> tree;
+        tree.emplace(4,4);
+        tree.try_emplace(5,5);
+        tree.try_emplace(4,5);
+        tree.emplace(5,4);
+
+        _ASSERT(tree.at(4) == 5);
+        _ASSERT(tree.at(5) == 5);
+
+        tree.erase_all();
+        return passed;
+    });
 }
