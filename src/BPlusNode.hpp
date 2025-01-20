@@ -43,11 +43,14 @@ namespace csaur{
         pointer search (const key_type&) const;
 
         /// @brief Inserts a new key and its associated data into the node's subtree.
+        /// @tparam Try - If set to true, double insertions will change values.
         /// @param key The key to insert.
         /// @param args Arguments used to construct the data associated with the key.
         /// @return A pointer to the newly created node if the node was full and split. Otherwise, returns `nullptr` if the insertion is successful and the node is not full.
-        template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, typename ... Args> requires std::constructible_from<Mapped, Args...>
-        BPlusNode* emplace (BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>&, key_type&&, Args&& ...);
+        template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, bool Try = false, typename ... Args> requires std::constructible_from<Mapped, Args...>
+        BPlusNode* emplace (BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>&, key_type&&, Args&& ...) noexcept;
+
+        static void restabilize(BPlusNode*, BPlusNode*);
 
         /// @brief Deletes the data associated with the given key from the node. 
         /// @param key The key to erase.
