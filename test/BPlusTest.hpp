@@ -11,6 +11,40 @@ const char* const passed = " - PASSED\n";
 
 #define _ASSERT(smth) if (!(smth)) return failed
 
+template<class T>
+class FourMaxAllocator{
+    int flag;
+public:
+    using value_type = T;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+
+    FourMaxAllocator(){flag = 0;}
+    FourMaxAllocator(const FourMaxAllocator&) = delete;
+    FourMaxAllocator& operator=(const FourMaxAllocator&) = delete;
+
+    pointer allocate();
+    pointer allocate(size_t);
+    void deallocate(pointer);
+};
+
+template <class T>
+typename FourMaxAllocator<T>::pointer FourMaxAllocator<T>::allocate()
+{
+    if (flag == 4){throw std::bad_alloc();}
+    ++flag;
+    return (FourMaxAllocator<T>::pointer)std::malloc(sizeof(value_type));
+}
+
+template <class T>
+void FourMaxAllocator<T>::deallocate(pointer node)
+{
+    --flag;
+    std::free(node);
+}
+
 class BPlusTest{
     /// @brief Tests the correctness of behaviour of the nodes of the tree.
     void test_nodes();
