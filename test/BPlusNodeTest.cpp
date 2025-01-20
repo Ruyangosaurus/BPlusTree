@@ -69,6 +69,7 @@ void BPlusTest::test_nodes(){
         even_leaf.emplace(tree4,0,0);
 
         typename csaur::BPlusTree<int,int,4>::node_type* new_even_leaf = even_leaf.emplace(tree4,30,30);
+        csaur::BPlusTree<int,int,4>::node_type::restabilize(&even_leaf, new_even_leaf);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -88,6 +89,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.emplace(tree5,0,0);
 
         typename csaur::BPlusTree<int,int,5>::node_type* new_odd_leaf = odd_leaf.emplace(tree5,40,40);
+        csaur::BPlusTree<int,int,5>::node_type::restabilize(&odd_leaf, new_odd_leaf);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -112,6 +114,7 @@ void BPlusTest::test_nodes(){
         even_leaf.emplace(tree4,0,0);
 
         typename csaur::BPlusTree<int,int,4>::node_type* new_even_leaf = even_leaf.emplace(tree4,10,10);
+        csaur::BPlusTree<int,int,4>::node_type::restabilize(&even_leaf, new_even_leaf);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -131,6 +134,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.emplace(tree5,0,0);
 
         typename csaur::BPlusTree<int,int,5>::node_type* new_odd_leaf = odd_leaf.emplace(tree5,10,10);
+        csaur::BPlusTree<int,int,5>::node_type::restabilize(&odd_leaf, new_odd_leaf);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -155,6 +159,7 @@ void BPlusTest::test_nodes(){
         even_leaf.emplace(tree4,0,0);
 
         typename csaur::BPlusTree<int,int,4>::node_type* new_even_leaf = even_leaf.emplace(tree4,20,20);
+        csaur::BPlusTree<int,int,4>::node_type::restabilize(&even_leaf, new_even_leaf);
         _ASSERT(even_leaf.m_next == new_even_leaf);
         _ASSERT(new_even_leaf->m_prev == &even_leaf);
         _ASSERT(*(even_leaf.search(0)) == 0);
@@ -174,6 +179,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.emplace(tree5,0,0);
 
         typename csaur::BPlusTree<int,int,5>::node_type* new_odd_leaf = odd_leaf.emplace(tree5,20,20);
+        csaur::BPlusTree<int,int,5>::node_type::restabilize(&odd_leaf, new_odd_leaf);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -195,6 +201,7 @@ void BPlusTest::test_nodes(){
         odd_leaf.emplace(tree5,0,0);
 
         new_odd_leaf = odd_leaf.emplace(tree5,30,30);
+        csaur::BPlusTree<int,int,5>::node_type::restabilize(&odd_leaf, new_odd_leaf);
         _ASSERT(odd_leaf.m_next == new_odd_leaf);
         _ASSERT(new_odd_leaf->m_prev == &odd_leaf);
         _ASSERT(*(odd_leaf.search(0)) == 0);
@@ -612,6 +619,7 @@ void BPlusTest::test_nodes(){
         even_node.m_keys[2] = even_leaf_3->m_keys[0];
         even_node.m_keys[3] = even_leaf_4->m_keys[0];
         auto new_even_node = even_node.emplace(tree4,90,90);
+        csaur::BPlusTree<int,int,4>::node_type::restabilize(&even_node, new_even_node);
 
         _ASSERT(1 < even_node.m_key_counter && even_node.m_key_counter < 4);
         _ASSERT(*(even_node.search(0)) == 0);
@@ -667,6 +675,7 @@ void BPlusTest::test_nodes(){
         odd_node.m_keys[3] = odd_leaf_4->m_keys[0];
         odd_node.m_keys[4] = odd_leaf_5->m_keys[0];
         auto new_odd_node = odd_node.emplace(tree5,90,90);
+        csaur::BPlusTree<int,int,5>::node_type::restabilize(&odd_node, new_odd_node);
 
         _ASSERT(1 < odd_node.m_key_counter && odd_node.m_key_counter < 4);
         _ASSERT(*(odd_node.search(-20)) == -20);
