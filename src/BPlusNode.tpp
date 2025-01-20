@@ -33,58 +33,46 @@ BPlusNode<Key, Mapped, N>::pointer BPlusNode<Key, Mapped, N>::search(const key_t
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
-template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, typename ... Args> requires std::constructible_from<Mapped, Args...>
-BPlusNode<Key, Mapped, N> *BPlusNode<Key, Mapped, N>::emplace(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree, key_type&&key, Args&& ... args)
+void BPlusNode<Key, Mapped, N>::restabilize(BPlusNode *existing_node, BPlusNode *new_node)
 {
     std::variant<pointer, BPlusNode*> inserted_ptr;
-    Key inserted_key;
-    if (m_data.index() == 0){                           // if leaf
-        if (search(key) != nullptr) return nullptr;
-        inserted_ptr = std::construct_at(tree.m_val_alloc.allocate(), std::move(args...));
-        inserted_key = Key (std::move(key));
+    key_type inserted_key = new_node->m_keys[0];
+    size_type i = existing_node->find_smallest_bigger_key_index(inserted_key);
+    i -= (i != 0);
+    if (existing_node->m_data.index() != 0){
+        inserted_ptr = std::get<1>(new_node->m_data)[0];    
+        restabilize(std::get<1>(existing_node->m_data)[i], std::get<1>(new_node->m_data)[0]);
+        inserted_key = std::get<1>(new_node->m_data)[0]->m_keys[0];
     }
-    else{                                               // if internal
-        std::size_t working_index = this->find_smallest_bigger_key_index(key);
-        working_index -= (working_index != 0);
-        inserted_ptr = std::get<1>(this->m_data)[working_index]->emplace(tree, std::move(key), std::move(args...));
-        this->m_keys[working_index] = std::get<1>(this->m_data)[working_index]->m_keys[0];
-        if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
-        inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
+    else{
+        inserted_ptr = std::get<0>(new_node->m_data)[0];  
     }
-
-    BPlusNode* inserting_node = this, * out_ptr = nullptr;
-    if (this->m_key_counter == N){ // split
-        auto new_node = std::construct_at(tree.m_node_alloc.allocate(), this->m_data.index() == 0);              // index == 0 <-> this is a leaf
-        std::size_t mid = (inserted_key < this->m_keys[N/2]) ? N/2 : N - N/2;  // stabilizing the sizes
-        inserting_node = (inserted_key < this->m_keys[N/2]) ? this : new_node; // choose the smaller node
-        out_ptr = new_node;
-        if (tree.m_max == this){
-            tree.m_max = new_node;
-        }
-
-        std::copy_n(this->m_keys.begin() + mid, this->m_key_counter - mid, new_node->m_keys.begin());
-        if (this->m_data.index() == 0){
-            std::copy_n(std::get<0>(this->m_data).begin() + mid,               // first
-                        this->m_key_counter - mid,                             // count
-                        std::get<0>(new_node->m_data).begin());                // result
-        }
-        else{
-            std::copy_n(std::get<1>(this->m_data).begin() + mid, 
-                        this->m_key_counter - mid, 
-                        std::get<1>(new_node->m_data).begin());
-        }
-        this->m_key_counter = mid;
-        new_node->m_key_counter = N - mid;
-
-        if (this->m_next){
-           this->m_next->m_prev = new_node;
-        }
-        new_node->m_next = this->m_next;
-        this->m_next = new_node;
-        new_node->m_prev = this;
+    std::size_t mid = (inserted_key < existing_node->m_keys[N/2]) ? N/2 : N - N/2;  // stabilizing the sizes
+    BPlusNode* inserting_node = (inserted_key < existing_node->m_keys[N/2]) ? existing_node : new_node; // choose the smaller node
+    
+    std::copy_n(existing_node->m_keys.begin() + mid, existing_node->m_key_counter - mid, new_node->m_keys.begin());
+    if (existing_node->m_data.index() == 0){
+        std::copy_n(std::get<0>(existing_node->m_data).begin() + mid,               // first
+                    existing_node->m_key_counter - mid,                             // count
+                    std::get<0>(new_node->m_data).begin());                // result
     }
-    std::size_t i = inserting_node->m_key_counter;
-    if (this->m_data.index() == 0){
+    else{
+        std::copy_n(std::get<1>(existing_node->m_data).begin() + mid, 
+                    existing_node->m_key_counter - mid, 
+                    std::get<1>(new_node->m_data).begin());
+    }
+    existing_node->m_key_counter = mid;
+    new_node->m_key_counter = N - mid;
+
+    if (existing_node->m_next){
+        existing_node->m_next->m_prev = new_node;
+    }
+    new_node->m_next = existing_node->m_next;
+    existing_node->m_next = new_node;
+    new_node->m_prev = existing_node;
+
+    i = inserting_node->m_key_counter;
+    if (inserting_node->m_data.index() == 0){
         for (; (i > 0)&&(inserted_key < inserting_node->m_keys[i-1]); --i){ // move them all one step right to fit the new one
             std::get<0>(inserting_node->m_data)[i] = std::get<0>(inserting_node->m_data)[i-1];
         }
@@ -101,7 +89,97 @@ BPlusNode<Key, Mapped, N> *BPlusNode<Key, Mapped, N>::emplace(BPlusTree<Key, Map
     }
     inserting_node->m_keys[i] = inserted_key;
     ++inserting_node->m_key_counter;
-    return out_ptr;
+}
+
+template <OrderedKey Key, Storable Mapped, std::size_t N>
+template<SingleElementAllocator ValAlloc, SingleElementAllocator NodeAlloc, bool Try, typename ... Args> requires std::constructible_from<Mapped, Args...>
+BPlusNode<Key, Mapped, N> *BPlusNode<Key, Mapped, N>::emplace(BPlusTree<Key, Mapped, N, ValAlloc, NodeAlloc>& tree, key_type&&key, Args&& ... args) noexcept
+{
+    std::variant<pointer, BPlusNode*> inserted_ptr;
+    Key inserted_key;
+    if (m_data.index() == 0){                           // if leaf
+        try{
+            pointer val_ptr = search(key);
+            if (val_ptr != nullptr){
+                if constexpr(Try){
+                    *val_ptr = std::move(args...);
+                }
+                return nullptr;
+            };
+            inserted_ptr = std::construct_at(tree.m_val_alloc.allocate(), std::move(args...));
+        }
+        catch(std::bad_alloc& e){
+            return nullptr;
+        }
+        inserted_key = Key (std::move(key));
+    }
+    else{                                               // if internal
+        std::size_t working_index = this->find_smallest_bigger_key_index(key);
+        working_index -= (working_index != 0);
+        if (this->m_keys[working_index] > key){
+            this->m_keys[working_index] = key;
+        }
+        inserted_ptr = std::get<1>(this->m_data)[working_index]->emplace(tree, std::move(key), std::move(args...));
+        if (std::get<1>(inserted_ptr) == nullptr) return nullptr;
+        if (this->m_key_counter != N){
+            restabilize(std::get<1>(this->m_data)[working_index], std::get<1>(inserted_ptr));
+        }
+        inserted_key = std::get<1>(inserted_ptr)->m_keys[0];
+    }
+
+    if (this->m_key_counter == N){ // split
+        BPlusNode* new_node;
+        try{
+            new_node = std::construct_at(tree.m_node_alloc.allocate(), this->m_data.index() == 0);              // index == 0 <-> this is a leaf
+        }
+        catch(std::bad_alloc& e){
+            while(inserted_ptr.index() != 0){
+                auto temp = std::get<1>(inserted_ptr);
+                if (temp->m_data.index() == 0){
+                    inserted_ptr = std::get<1>(temp->m_data)[0];
+                }
+                else{
+                    inserted_ptr = std::get<0>(temp->m_data)[0];
+                }
+                std::destroy_at(temp);
+                tree.m_node_alloc.deallocate(temp);
+            }
+            std::destroy_at(std::get<0>(inserted_ptr));
+            tree.m_val_alloc.deallocate(std::get<0>(inserted_ptr));
+            return nullptr;
+        }
+        if (tree.m_max == this){
+            tree.m_max = new_node;
+        }
+        new_node->m_keys[0] = inserted_key;
+        if (this->m_data.index() == 0){
+            std::get<0>(new_node->m_data)[0] = std::get<0>(inserted_ptr);
+
+        }
+        else{
+            std::get<1>(new_node->m_data)[0] = std::get<1>(inserted_ptr);
+        }
+        return new_node;
+    }
+    std::size_t i = this->m_key_counter;
+    if (this->m_data.index() == 0){
+        for (; (i > 0)&&(inserted_key < this->m_keys[i-1]); --i){ // move them all one step right to fit the new one
+            std::get<0>(this->m_data)[i] = std::get<0>(this->m_data)[i-1];
+        }
+        std::get<0>(this->m_data)[i] = std::get<0>(inserted_ptr);
+    }
+    else{
+        for (; (i > 0)&&(inserted_key < this->m_keys[i-1]); --i){ // move them all one step right to fit the new one
+            std::get<1>(this->m_data)[i] = std::get<1>(this->m_data)[i-1];
+        }
+        std::get<1>(this->m_data)[i] = std::get<1>(inserted_ptr);
+    }
+    for (i = this->m_key_counter; (i > 0)&&(inserted_key < this->m_keys[i-1]); --i){ // move them all one step right to fit the new one
+        this->m_keys[i] = this->m_keys[i-1];
+    }
+    this->m_keys[i] = inserted_key;
+    ++this->m_key_counter;
+    return nullptr;
 }
 
 template <OrderedKey Key, Storable Mapped, std::size_t N>
